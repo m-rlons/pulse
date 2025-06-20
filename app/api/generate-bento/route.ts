@@ -29,7 +29,8 @@ export async function POST(req: NextRequest) {
     );
 
     if (!geminiRes.ok) {
-      return NextResponse.json({ error: 'Gemini API error' }, { status: 500 });
+      const errorText = await geminiRes.text();
+      return NextResponse.json({ error: 'Gemini API error', details: errorText }, { status: 500 });
     }
 
     const geminiData = await geminiRes.json();
