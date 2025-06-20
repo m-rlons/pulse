@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
 
     const systemPrompt = `You are a behavioral psychologist specializing in consumer behavior. Based on the provided business context, generate 8 assessment statements. Each statement must probe exactly one of the 8 core behavioral dimensions: spend, loyalty, investment, interest, greenisity, social, novelty, value. The statements must be contextually grounded in the business context, written in the format 'They [specific behavioral pattern]'. Each statement must be pure, illuminating only its own dimension. Return ONLY a valid JSON object matching this TypeScript interface: interface Response { statements: { text: string; dimension: BehavioralDimension; }[] }. The array must contain exactly 8 unique statements, one for each dimension. Do not include markdown formatting or explanations. Here is the business context: ${JSON.stringify(bento)}`;
 
-    const geminiRes = await fetch(`https://generativeai.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: {
@@ -29,6 +29,7 @@ export async function POST(req: NextRequest) {
 
     if (!geminiRes.ok) {
       const errorText = await geminiRes.text();
+      console.error('Full Gemini API error:', errorText);
       return NextResponse.json({ error: 'Gemini API error', details: errorText }, { status: 500 });
     }
 

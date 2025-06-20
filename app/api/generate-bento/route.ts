@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
     const systemPrompt = `You are an expert business analyst. Your task is to analyze the following business description. Distill it into its core 'businessModel' and the primary 'customerChallenge'. Respond ONLY with a valid JSON object matching this TypeScript interface: interface Bento { businessModel: string; customerChallenge: string; }. Do not include markdown formatting, backticks, or any explanatory text. Here is the user's input: ${businessInput}`;
 
     // Use Gemini API key as a query parameter
-    const geminiRes = await fetch(`https://generativeai.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: {
@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
 
     if (!geminiRes.ok) {
       const errorText = await geminiRes.text();
+      console.error('Full Gemini API error:', errorText);
       return NextResponse.json({ error: 'Gemini API error', details: errorText }, { status: 500 });
     }
 

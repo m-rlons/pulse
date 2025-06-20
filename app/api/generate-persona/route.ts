@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
 
     const systemPrompt = `You are a world-class marketing strategist. Based on the provided business context and the business owner's assessment of their customers (scores: -1=disagree, 0=neutral, 1=agree), create a detailed Gen Z customer persona. Generate a creative persona name, a rich visual description for an image AI, a summary, and three actionable marketing insights. Respond ONLY with a valid JSON object matching the Persona interface. Do not include markdown or explanations. Here is the data: ${JSON.stringify({ bento, results })}`;
 
-    const geminiRes = await fetch(`https://generativeai.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
         method: 'POST',
         headers: {
@@ -30,6 +30,7 @@ export async function POST(req: NextRequest) {
 
     if (!geminiRes.ok) {
       const errorText = await geminiRes.text();
+      console.error('Full Gemini API error:', errorText);
       return NextResponse.json({ error: 'Gemini API error', details: errorText }, { status: 500 });
     }
 
