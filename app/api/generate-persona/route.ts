@@ -2,8 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Bento, AssessmentResult, Persona } from '../../../lib/types';
 
 export async function POST(req: NextRequest) {
+  console.log('[generate-persona] Request received');
   try {
     const body = await req.json();
+    console.log('[generate-persona] Body:', JSON.stringify(body, null, 2));
+
     const { bento, results } = body;
     if (!bento || !Array.isArray(results)) {
       return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
@@ -14,7 +17,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing Gemini API key' }, { status: 500 });
     }
 
-    const systemPrompt = `You are a world-class marketing strategist. Based on the provided business context and the business owner's assessment of their customers (scores: -1=disagree, 0=neutral, 1=agree), create a detailed Gen Z customer persona. Generate a creative persona name, a rich visual description for an image AI, a summary, and three actionable marketing insights. Respond ONLY with a valid JSON object matching the Persona interface. Do not include markdown or explanations. Here is the data: ${JSON.stringify({ bento, results })}`;
+    const systemPrompt = `You are a world-class marketing strategist. Based on the provided business context and the business owner's assessment of their customers (scores: -1=disagree, 0=neutral, 1=agree), create a detailed Gen Z customer persona. 
+    
+Generate a short, snappy 'title' for the persona (e.g., "The Eco-Conscious Streamer"), a creative 'personaName', a rich 'visualDescriptor' for an image AI, a 'summary', and three 'actionableInsights'. 
+    
+Respond ONLY with a valid JSON object matching the Persona interface. Do not include markdown or explanations. Here is the data: ${JSON.stringify({ bento, results })}`;
+    console.log('[generate-persona] Prompt length:', systemPrompt.length);
 
     const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
@@ -28,10 +36,16 @@ export async function POST(req: NextRequest) {
       }
     );
 
+    console.log('[generate-persona] Gemini status:', geminiRes.status);
+
     if (!geminiRes.ok) {
       const errorText = await geminiRes.text();
-      console.error('Full Gemini API error:', errorText);
-      return NextResponse.json({ error: 'Gemini API error', details: errorText }, { status: 500 });
+      console.error('[generate-persona] Full Gemini error:', errorText);
+      return NextResponse.json({
+        error: 'Gemini API error',
+        details: errorText,
+        status: geminiRes.status
+      }, { status: 500 });
     }
 
     const geminiData = await geminiRes.json();
@@ -48,7 +62,8 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json(persona);
-  } catch (err) {
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  } catch (err: any) {
+    console.error('[generate-persona] CATCH BLOCK ERROR:', err);
+    return NextResponse.json({ error: 'Server error', details: err.message }, { status: 500 });
   }
 } 
