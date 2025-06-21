@@ -17,11 +17,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing Gemini API key' }, { status: 500 });
     }
 
-    const systemPrompt = `You are a world-class marketing strategist. Based on the provided business context and the business owner's assessment of their customers (scores: -1=disagree, 0=neutral, 1=agree), create a detailed Gen Z customer persona. 
-    
-Generate a short, snappy 'title' for the persona (e.g., "The Eco-Conscious Streamer"), a creative 'personaName', a rich 'visualDescriptor' for an image AI, a 'summary', and three 'actionableInsights'. 
-    
-Respond ONLY with a valid JSON object matching the Persona interface. Do not include markdown or explanations. Here is the data: ${JSON.stringify({ bento, results })}`;
+    const systemPrompt = `You are a world-class marketing strategist. Based on the provided business context and the business owner's assessment of their customers (scores: -1=disagree, 0=neutral, 1=agree), create a detailed customer persona.
+
+Business Model: ${bento.businessModel}
+Customer Challenge: ${bento.customerChallenge}
+
+Assessment Results:
+${results.map(r => `${r.dimension}: ${r.score === 1 ? 'agree' : r.score === 0 ? 'neutral' : 'disagree'}`).join('\n')}
+
+Generate a JSON object with EXACTLY this structure:
+{
+  "title": "Short catchy title like 'The Eco-Conscious Streamer'",
+  "personaName": "Creative name like 'Maya Chen'",
+  "visualDescriptor": "Detailed description for image generation",
+  "summary": "2-3 sentence persona summary",
+  "actionableInsights": [
+    {"title": "Insight 1 Title", "insight": "Detailed insight 1"},
+    {"title": "Insight 2 Title", "insight": "Detailed insight 2"},
+    {"title": "Insight 3 Title", "insight": "Detailed insight 3"}
+  ]
+}
+
+Return ONLY the JSON object, no markdown, no explanation.`;
     console.log('[generate-persona] Prompt length:', systemPrompt.length);
 
     const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
@@ -49,11 +66,24 @@ Respond ONLY with a valid JSON object matching the Persona interface. Do not inc
     }
 
     const geminiData = await geminiRes.json();
-    // Assume the model returns the JSON as a string in geminiData.candidates[0].content.parts[0].text
+    console.log('[generate-persona] Gemini response structure:', Object.keys(geminiData));
+
     let persona: Persona;
     try {
-      persona = JSON.parse(geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '{}');
-    } catch {
+      const rawText = geminiData.candidates?.[0]?.content?.parts?.[0]?.text;
+      console.log('[generate-persona] Raw response text:', rawText);
+
+      if (!rawText) {
+        throw new Error('No text in Gemini response');
+      }
+
+      // Clean any potential markdown formatting
+      const cleanedText = rawText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      persona = JSON.parse(cleanedText);
+      console.log('[generate-persona] Parsed persona:', persona);
+    } catch (parseError) {
+      console.error('[generate-persona] Parse error:', parseError);
+      console.error('[generate-persona] Full gemini data:', JSON.stringify(geminiData, null, 2));
       return NextResponse.json({ error: 'Invalid response from Gemini' }, { status: 500 });
     }
 
