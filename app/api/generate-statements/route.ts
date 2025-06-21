@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Bento, Statement } from '../../../lib/types';
 
 export async function POST(req: NextRequest) {
+  console.log('[generate-statements] Environment check - API key exists:', !!process.env.GEMINI_API_KEY);
+  
   console.log('[generate-statements] Request received');
   try {
     const bento: Bento = await req.json();
-    console.log('[generate-statements] Bento:', JSON.stringify(bento, null, 2));
+    console.log('[generate-statements] Received bento:', JSON.stringify(bento, null, 2));
     
     if (!bento || typeof bento.businessModel !== 'string' || typeof bento.customerChallenge !== 'string') {
       console.error('[generate-statements] Invalid input:', bento);
