@@ -26,6 +26,7 @@ export interface Persona {
     title: string;
     insight: string;
   }[];
+  imageUrl?: string | null;
 }
 
 // Type for the assessment results sent to the persona generation API

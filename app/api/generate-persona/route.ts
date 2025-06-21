@@ -87,6 +87,39 @@ Return ONLY the JSON object, no markdown, no explanation.`;
       return NextResponse.json({ error: 'Invalid response from Gemini' }, { status: 500 });
     }
 
+    // Generate persona image using Imagen
+    console.log('[generate-persona] Generating image...');
+    const imagePrompt = `headshot portrait of ${persona.visualDescriptor}, white background, professional photograph, high resolution, looking at camera, symmetrical, shot on camera, 8k, high detail`;
+
+    try {
+      const imagenRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:generateImages?key=${apiKey}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          prompt: imagePrompt,
+          number_of_images: 1,
+          aspect_ratio: "1:1",
+          safety_filter_level: "block_some",
+          person_generation: "allow_adult"
+        }),
+      });
+
+      if (!imagenRes.ok) {
+        console.error('[generate-persona] Imagen error:', await imagenRes.text());
+        persona.imageUrl = null;
+      } else {
+        const imagenData = await imagenRes.json();
+        console.log('[generate-persona] Imagen response:', JSON.stringify(imagenData, null, 2));
+        const base64Image = imagenData.predictions?.[0]?.bytesBase64Encoded;
+        persona.imageUrl = base64Image ? `data:image/png;base64,${base64Image}` : null;
+      }
+    } catch (imageError) {
+      console.error('[generate-persona] Image generation error:', imageError);
+      persona.imageUrl = null;
+    }
+
     if (!persona.personaName || !persona.visualDescriptor || !persona.summary || !Array.isArray(persona.actionableInsights)) {
       return NextResponse.json({ error: 'Incomplete Persona data' }, { status: 500 });
     }

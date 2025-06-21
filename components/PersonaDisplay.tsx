@@ -10,6 +10,15 @@ export const PersonaDisplay: React.FC<PersonaDisplayProps> = ({ persona, onResta
   const [showDescriptor, setShowDescriptor] = useState(false);
   return (
     <div className="rounded-lg shadow-lg p-8 bg-why-white max-w-2xl mx-auto">
+      {persona.imageUrl && (
+        <div className="mb-6 flex justify-center">
+          <img 
+            src={persona.imageUrl} 
+            alt={persona.personaName}
+            className="w-48 h-48 rounded-full object-cover shadow-lg"
+          />
+        </div>
+      )}
       <h2 className="text-2xl font-bold text-curious-blue mb-2">{persona.title}</h2>
       <div className="text-lg font-semibold text-golly-gold mb-4">{persona.personaName}</div>
       <div className="mb-4 text-heedless-black">{persona.summary}</div>
