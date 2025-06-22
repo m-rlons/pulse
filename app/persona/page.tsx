@@ -1,47 +1,93 @@
 'use client';
-import React, { useState, useEffect, Suspense } from 'react';
+
+import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Persona, ChatMessage } from '../../lib/types';
-import PersonaChat from '../../components/PersonaChat';
-import { Loader, Edit, ArrowLeft } from 'lucide-react';
+import { Loader, Edit, Send } from 'lucide-react';
 
 function PersonaPageContent() {
   const router = useRouter();
   const [persona, setPersona] = useState<Persona | null>(null);
-  const [initialMessages, setInitialMessages] = useState<ChatMessage[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [view, setView] = useState<'chat' | 'edit'>('chat');
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(scrollToBottom, [messages]);
+  
+  // Load persona and initial chat history
   useEffect(() => {
     try {
       const personaData = localStorage.getItem('persona');
       const chatHistoryData = localStorage.getItem('chatHistory');
 
       if (personaData) {
-        setPersona(JSON.parse(personaData));
+        const parsedPersona = JSON.parse(personaData);
+        setPersona(parsedPersona);
+        // Set initial greeting if no history exists
+        if (!chatHistoryData) {
+          setMessages([{ role: 'persona', content: `Hello, I'm ${parsedPersona.name}. Ask me anything.` }]);
+        }
       } else {
         throw new Error('No persona data found. Please create a persona first.');
       }
 
       if (chatHistoryData) {
-        setInitialMessages(JSON.parse(chatHistoryData));
+        setMessages(JSON.parse(chatHistoryData));
       }
     } catch (e: any) {
       setError(e.message);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   }, []);
+  
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!input.trim() || isLoading) return;
 
-  const handleRefineClick = (dimension: string) => {
-    // Note: chat history is already saved in the chat component
-    router.push(`/swipe?refine=${encodeURIComponent(dimension)}`);
+    const userMessage: ChatMessage = { role: 'user', content: input };
+    const newMessages = [...messages, userMessage];
+    setMessages(newMessages);
+    setInput('');
+    setIsLoading(true);
+
+    try {
+      const response = await fetch('/api/chat-with-persona', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          persona,
+          chatHistory: messages,
+          message: input,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Network response was not ok');
+
+      const data = await response.json();
+      const finalMessages = [...newMessages, { role: 'persona' as const, content: data.responseText }];
+      setMessages(finalMessages);
+      localStorage.setItem('chatHistory', JSON.stringify(finalMessages));
+      
+    } catch (error) {
+      console.error('Failed to get response:', error);
+      const finalMessages = [...newMessages, { role: 'persona' as const, content: "I'm sorry, I'm having trouble connecting right now." }];
+      setMessages(finalMessages);
+      localStorage.setItem('chatHistory', JSON.stringify(finalMessages));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  if (loading) {
+  if (isLoading && !persona) {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-white">
         <Loader className="animate-spin mb-4" size={48} />
@@ -50,102 +96,86 @@ function PersonaPageContent() {
     );
   }
 
-  if (error || !persona) {
+  if (error) {
     return (
       <div className="flex items-center justify-center h-screen bg-white">
-        <div className="text-2xl text-red-500">{error || 'Could not load persona.'}</div>
+        <div className="text-2xl text-red-500">{error}</div>
       </div>
     );
   }
+  
+  if (!persona) return null; // Should be handled by loading/error states
 
   return (
-    <div className="h-screen w-full bg-white text-black overflow-hidden relative">
-      <AnimatePresence>
-        {view === 'chat' && (
-          <motion.div
-            key="chat-view"
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ duration: 0.5, ease: 'easeInOut' }}
-            className="absolute top-0 right-0 h-full w-1/2"
-          >
-            <PersonaChat
-              persona={persona}
-              handleRefineClick={handleRefineClick}
-              initialMessages={initialMessages}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
-      
-      <AnimatePresence>
-        {view === 'edit' && (
-           <motion.div
-            key="edit-view"
-            initial={{ x: '-100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '-100%' }}
-            transition={{ duration: 0.5, ease: 'easeInOut' }}
-            className="absolute top-0 left-0 h-full w-1/2 p-12 overflow-y-auto"
-           >
-            <button onClick={() => setView('chat')} className="absolute top-8 right-8 flex items-center gap-2 text-sm font-semibold">
-                <ArrowLeft size={16} />
-                Back To Chat
-            </button>
-            <h1 className="text-4xl font-bold">{persona.name}</h1>
-            <p className="text-lg text-gray-600 mt-1">{persona.age} years old</p>
-            <p className="text-lg text-gray-600">{persona.role} - {persona.experience}</p>
-            
-            <div className="mt-8 space-y-6 text-base">
-              <div>
-                <h3 className="font-bold mb-2 text-gray-800">Bio</h3>
-                <p className="text-gray-700 whitespace-pre-wrap">{persona.bio}</p>
-              </div>
-              <div>
-                <h3 className="font-bold mb-2 text-gray-800">Interests</h3>
-                <p className="text-gray-700">{persona.interests}</p>
-              </div>
-              <div>
-                <h3 className="font-bold mb-2 text-gray-800">Disinterests</h3>
-                <p className="text-gray-700">{persona.disinterests}</p>
-              </div>
-            </div>
-            <div className="mt-8 text-sm text-gray-500">
-                <p>Scroll down to continue reading</p>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+    <div className="h-screen w-full bg-white text-black overflow-hidden flex">
+      {/* Left side: Persona Image */}
+      <div className="w-1/2 h-full relative">
+        <Image
+            src={persona.imageUrl!}
+            alt={persona.name}
+            fill
+            className="object-contain object-bottom"
+            style={{
+              maskImage: 'linear-gradient(to right, black 75%, transparent 100%)',
+              WebkitMaskImage: 'linear-gradient(to right, black 75%, transparent 100%)',
+            }}
+            priority
+        />
+        <button
+            onClick={() => router.push('/')} // Let's just have it go home for now
+            className="absolute top-8 left-8 flex items-center gap-2 text-sm font-semibold z-10 bg-white/50 backdrop-blur-sm px-3 py-2 rounded-lg"
+        >
+            <Edit size={16} />
+            Edit Persona
+        </button>
+      </div>
 
-      <motion.div
-        layoutId="persona-image"
-        className="absolute bottom-0 w-1/2 h-4/5"
-        style={{
-            left: view === 'chat' ? 0 : 'auto',
-            right: view === 'edit' ? 0 : 'auto',
-        }}
-        transition={{ duration: 0.5, ease: 'easeInOut' }}
-      >
-        {persona.imageUrl && (
-            <Image
-                src={persona.imageUrl}
-                alt={persona.name}
-                fill
-                className="object-contain object-bottom"
-                priority
+      {/* Right side: Chat */}
+      <div className="w-1/2 h-full flex flex-col">
+        <div className="flex-1 overflow-y-auto p-8 space-y-4">
+          {messages.map((msg, index) => (
+            <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
+              {msg.role === 'persona' && (
+                <div className="w-8 h-8 rounded-full bg-gray-300 flex-shrink-0" />
+              )}
+              <div className={`max-w-md p-4 rounded-2xl ${ msg.role === 'persona' ? 'bg-black text-white' : 'bg-gray-100 text-black' }`}>
+                <p>{msg.content}</p>
+              </div>
+            </div>
+          ))}
+          
+          {isLoading && (
+             <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-gray-300 flex-shrink-0" />
+                <div className="max-w-md p-4 rounded-2xl bg-black text-white">
+                    <Loader className="animate-spin" size={20} />
+                </div>
+             </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input Form - No border-t here */}
+        <div className="p-4">
+          <form onSubmit={handleSend} className="relative">
+            <input
+              type="text"
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              placeholder={`what do you do, ${persona.name}?`}
+              className="w-full p-4 pr-12 text-black bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-black"
+              disabled={isLoading}
             />
-        )}
-        {view === 'chat' && (
             <button
-                onClick={() => setView('edit')}
-                className="absolute top-8 left-8 flex items-center gap-2 text-sm font-semibold z-10"
+              type="submit"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black disabled:opacity-50"
+              disabled={isLoading || !input.trim()}
             >
-                <Edit size={16} />
-                Edit Persona
+              <Send size={20} />
             </button>
-        )}
-      </motion.div>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }
