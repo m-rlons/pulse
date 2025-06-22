@@ -264,30 +264,58 @@ function PersonaPageContent() {
     setInput('');
     setIsLoading(true);
 
+    // Add a placeholder for the persona's response
+    setMessages(prev => [...prev, { role: 'persona', content: '' }]);
+
     try {
       const response = await fetch('/api/chat-with-persona', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           persona,
-          chatHistory: messages,
+          chatHistory: newMessages, // Send history *before* the empty message
           message: input,
           document: selectedDocument,
         }),
       });
 
       if (!response.ok) throw new Error('Network response was not ok');
+      if (!response.body) throw new Error('No response body');
+      
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let done = false;
 
-      const data = await response.json();
-      const finalMessages = [...newMessages, { role: 'persona' as const, content: data.responseText }];
-      setMessages(finalMessages);
-      localStorage.setItem('chatHistory', JSON.stringify(finalMessages));
+      while (!done) {
+        const { value, done: readerDone } = await reader.read();
+        done = readerDone;
+        const chunk = decoder.decode(value, { stream: true });
+        
+        setMessages(prev => {
+            const lastMsgIndex = prev.length - 1;
+            const updatedMessages = [...prev];
+            // Ensure we don't modify the array if it's empty
+            if(updatedMessages[lastMsgIndex]) {
+               updatedMessages[lastMsgIndex].content += chunk;
+            }
+            return updatedMessages;
+        });
+      }
+
+      // After stream is complete, save the history
+       setMessages(prev => {
+        localStorage.setItem('chatHistory', JSON.stringify(prev));
+        return prev;
+      });
       
     } catch (error) {
       console.error('Failed to get response:', error);
-      const finalMessages = [...newMessages, { role: 'persona' as const, content: "I'm sorry, I'm having trouble connecting right now." }];
-      setMessages(finalMessages);
-      localStorage.setItem('chatHistory', JSON.stringify(finalMessages));
+      setMessages(prev => {
+        const lastMsgIndex = prev.length - 1;
+        const updatedMessages = [...prev];
+        updatedMessages[lastMsgIndex].content = "I'm sorry, I'm having trouble connecting right now.";
+        return updatedMessages;
+      });
     } finally {
       setIsLoading(false);
     }

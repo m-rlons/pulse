@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, Part } from '@google/generative-ai';
 import { Persona, ChatMessage } from '../../../lib/types';
 import { readFile } from 'fs/promises';
 import { join } from 'path';
@@ -81,27 +81,27 @@ export async function POST(req: NextRequest) {
     // Add the new message to the history for the prompt
     const currentChatHistory = [...chatHistory, { role: 'user', content: message } as ChatMessage];
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
     const systemPrompt = getSystemPrompt(persona, currentChatHistory, documentContent);
     
-    const result = await model.generateContent(systemPrompt);
-    const response = await result.response;
-    const text = response.text();
+    // For streaming, we need to handle the response differently
+    const result = await model.generateContentStream([systemPrompt]);
 
-    // The model should return a JSON string, so we parse it.
-    // We'll wrap in a try-catch in case the model output isn't perfect JSON.
-    try {
-      const parsedResponse = JSON.parse(text);
-      return NextResponse.json(parsedResponse);
-    } catch(e) {
-      console.error("Failed to parse JSON from model:", text, e);
-      // Fallback: return the raw text as a standard chat response
-      return NextResponse.json({
-        isCorrection: false,
-        dimension: null,
-        responseText: text 
-      });
-    }
+    const stream = new ReadableStream({
+      async start(controller) {
+        for await (const chunk of result.stream) {
+          const chunkText = chunk.text();
+          controller.enqueue(new TextEncoder().encode(chunkText));
+        }
+        controller.close();
+      }
+    });
+
+    return new Response(stream, {
+        headers: {
+            'Content-Type': 'text/plain; charset=utf-8',
+        }
+    });
 
   } catch (error) {
     console.error('[chat-with-persona] Error:', error);

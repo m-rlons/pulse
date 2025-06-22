@@ -104,8 +104,8 @@ Return nothing but the JSON block.
 
 async function generateImageForStatement(text: string): Promise<string | null> {
     try {
-        const imagePrompt = `a vibrant, abstract, simple graphic representing the concept: "${text}". Use a modern, minimalist style.`;
-        const imageModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash-preview-0514" });
+        const imagePrompt = `a vibrant, abstract, simple graphic representing the concept: "${text}". Use a modern, minimalist style on a clean white background.`;
+        const imageModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
         const result = await imageModel.generateContent([imagePrompt]);
         const response = await result.response;
         // This part is tricky. Assuming the model can return image data directly
