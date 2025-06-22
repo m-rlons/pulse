@@ -109,16 +109,12 @@ function PersonaPageContent() {
   return (
     <div className="h-screen w-full bg-white text-black overflow-hidden flex">
       {/* Left side: Persona Image */}
-      <div className="w-1/2 h-full relative">
+      <div className="w-1/2 h-full relative z-10">
         <Image
             src={persona.imageUrl!}
             alt={persona.name}
             fill
             className="object-contain object-bottom"
-            style={{
-              maskImage: 'linear-gradient(to right, black 75%, transparent 100%)',
-              WebkitMaskImage: 'linear-gradient(to right, black 75%, transparent 100%)',
-            }}
             priority
         />
         <button

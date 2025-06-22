@@ -15,10 +15,11 @@ const gradients = [
 
 export interface SwipeInterfaceProps {
   statements: Statement[];
-  onComplete: (results: AssessmentResult[]) => void;
+  onAssessmentComplete: (results: AssessmentResult[]) => void;
+  onContinue: () => void;
 }
 
-export const SwipeInterface: React.FC<SwipeInterfaceProps> = ({ statements, onComplete }) => {
+export const SwipeInterface: React.FC<SwipeInterfaceProps> = ({ statements, onAssessmentComplete, onContinue }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [results, setResults] = useState<AssessmentResult[]>([]);
   const [isAnimating, setIsAnimating] = useState(false);
@@ -26,6 +27,13 @@ export const SwipeInterface: React.FC<SwipeInterfaceProps> = ({ statements, onCo
   const containerRef = useRef<HTMLDivElement>(null);
   
   const allAnswered = currentIndex >= statements.length;
+
+  // Effect to automatically trigger completion when all questions are answered
+  useEffect(() => {
+    if (allAnswered) {
+      onAssessmentComplete(results);
+    }
+  }, [allAnswered, results, onAssessmentComplete]);
 
   const handleSwipe = useCallback(
     (direction: 'left' | 'right' | 'down') => {
@@ -55,12 +63,6 @@ export const SwipeInterface: React.FC<SwipeInterfaceProps> = ({ statements, onCo
     setTimeout(() => setIsAnimating(false), 300);
   }, [currentIndex, isAnimating]);
 
-  const handleContinue = useCallback(() => {
-    if (allAnswered) {
-      onComplete(results);
-    }
-  }, [allAnswered, onComplete, results]);
-
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (isAnimating) return;
@@ -70,12 +72,12 @@ export const SwipeInterface: React.FC<SwipeInterfaceProps> = ({ statements, onCo
       if (e.key === 'ArrowDown') handleSwipe('down');
       
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && allAnswered) {
-        handleContinue();
+        onContinue();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleSwipe, handleContinue, allAnswered, isAnimating]);
+  }, [handleSwipe, onContinue, allAnswered, isAnimating]);
   
   const handleDragEnd = (_: any, info: { offset: { x: number, y: number } }) => {
     if (isAnimating || allAnswered) return;
@@ -172,7 +174,7 @@ export const SwipeInterface: React.FC<SwipeInterfaceProps> = ({ statements, onCo
             <div className="flex items-center gap-4">
                 <span className="text-gray-500 text-sm">Or Press Cmd + Enter</span>
                 <button
-                    onClick={handleContinue}
+                    onClick={onContinue}
                     className="bg-black text-white px-6 py-3 rounded-md font-semibold hover:bg-gray-800 transition-colors text-base"
                 >
                     Continue
