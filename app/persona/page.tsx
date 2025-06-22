@@ -208,30 +208,39 @@ function PersonaPageContent() {
     // Load persona and initial chat history
     try {
       const personaData = localStorage.getItem('persona');
-      const chatHistoryData = localStorage.getItem('chatHistory');
-      const resultsData = localStorage.getItem('assessmentResults');
-      const statementsData = localStorage.getItem('statements');
-
-      if (personaData) {
-        const parsedPersona = JSON.parse(personaData);
-        setPersona(parsedPersona);
-        // Set initial greeting if no history exists
-        if (!chatHistoryData) {
-          setMessages([{ role: 'persona', content: `Hello, I'm ${parsedPersona.name}. Ask me anything.` }]);
-        }
-      } else {
+      if (!personaData) {
+        // If there's no primary persona, check if we need to load a specific one from a list.
+        // For now, we just redirect or show an error.
         throw new Error('No persona data found. Please create a persona first.');
       }
+      
+      const parsedPersona: Persona = JSON.parse(personaData);
+      setPersona(parsedPersona);
+      
+      if (parsedPersona.id) {
+        const personaId = parsedPersona.id;
+        const chatHistoryData = localStorage.getItem(`chatHistory_${personaId}`);
+        const resultsData = localStorage.getItem(`assessmentResults_${personaId}`);
+        const statementsData = localStorage.getItem(`statements_${personaId}`);
 
-      if (chatHistoryData) {
-        setMessages(JSON.parse(chatHistoryData));
+        if (chatHistoryData) {
+          setMessages(JSON.parse(chatHistoryData));
+        } else {
+           // Set initial greeting if no history exists for this specific persona
+           setMessages([{ role: 'persona', content: `Hello, I'm ${parsedPersona.name}. Ask me anything.` }]);
+        }
+        if (resultsData) {
+          setAssessmentResults(JSON.parse(resultsData));
+        }
+        if (statementsData) {
+          setAllStatements(JSON.parse(statementsData));
+        }
+      } else {
+          // Fallback for older personas without an ID
+          const chatHistoryData = localStorage.getItem('chatHistory');
+          if (chatHistoryData) setMessages(JSON.parse(chatHistoryData));
       }
-      if (resultsData) {
-        setAssessmentResults(JSON.parse(resultsData));
-      }
-      if (statementsData) {
-        setAllStatements(JSON.parse(statementsData));
-      }
+
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -304,7 +313,9 @@ function PersonaPageContent() {
 
       // After stream is complete, save the history
        setMessages(prev => {
-        localStorage.setItem('chatHistory', JSON.stringify(prev));
+        if(persona?.id) {
+          localStorage.setItem(`chatHistory_${persona.id}`, JSON.stringify(prev));
+        }
         return prev;
       });
       
@@ -322,7 +333,12 @@ function PersonaPageContent() {
   };
 
   const handleEditDimension = (dimension: string) => {
-    router.push(`/swipe?refine=${dimension}`);
+    if (persona?.id) {
+        router.push(`/swipe?refine=${dimension}&personaId=${persona.id}`);
+    } else {
+        // Fallback for old personas
+        router.push(`/swipe?refine=${dimension}`);
+    }
   };
 
   if (isLoading && !persona) {

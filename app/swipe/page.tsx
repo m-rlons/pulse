@@ -19,6 +19,7 @@ function SwipePageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const refinementDimension = searchParams.get('refine');
+  const personaId = searchParams.get('personaId');
   
   const [showIntro, setShowIntro] = useState(!refinementDimension);
 
@@ -98,22 +99,29 @@ function SwipePageContent() {
 
     const generateAndSavePersona = async () => {
       let allResults = results;
-      const existingResultsJSON = localStorage.getItem('assessmentResults');
+      let existingResults: AssessmentResult[] = [];
+      
+      const storageKey = personaId ? `assessmentResults_${personaId}` : 'assessmentResults';
+      const existingResultsJSON = localStorage.getItem(storageKey);
 
       if (refinementDimension && existingResultsJSON) {
         // This is a refinement. Append new results to the old ones.
-        const existingResults: AssessmentResult[] = JSON.parse(existingResultsJSON);
+        existingResults = JSON.parse(existingResultsJSON);
         allResults = [...existingResults, ...results];
       }
-      // For a first-time run, allResults is just the new results.
       
-      localStorage.setItem('assessmentResults', JSON.stringify(allResults));
+      localStorage.setItem(storageKey, JSON.stringify(allResults));
       
       try {
         const response = await fetch('/api/generate-persona', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ bento, results: allResults }),
+          body: JSON.stringify({ 
+            bento, 
+            results: allResults,
+            // Pass existing persona ID to keep it consistent after refinement
+            existingPersonaId: personaId 
+          }),
         });
         if (!response.ok) throw new Error('Failed to generate persona');
         const persona: Persona = await response.json();
@@ -126,7 +134,7 @@ function SwipePageContent() {
     };
     
     setPersonaGenerationPromise(generateAndSavePersona());
-  }, [bento, refinementDimension]);
+  }, [bento, refinementDimension, personaId]);
 
   const handleContinue = async () => {
     setIsContinuing(true);

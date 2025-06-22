@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Bento, AssessmentResult, Persona } from '../../../lib/types';
+import { v4 as uuidv4 } from 'uuid';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -37,28 +38,30 @@ Generate a JSON object with EXACTLY this TypeScript structure:
 Return ONLY the JSON object. Do not include markdown formatting, backticks, or any explanatory text.
 `;
 
-export async function POST(req: NextRequest) {
-  console.log('[generate-persona] Request received');
+async function generatePersona(
+  bento: Bento, 
+  results: AssessmentResult[], 
+  existingPersonaId?: string
+): Promise<Persona> {
+  const systemPrompt = getSystemPrompt(bento, results);
+  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  
+  const result = await model.generateContent(systemPrompt);
+  const response = await result.response;
+  const text = response.text();
+
+  // The model should return a JSON object. We'll try to parse it.
   try {
-    const { bento, results } = await req.json();
-    if (!bento || !Array.isArray(results)) {
-      return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
-    }
-
-    // Generate Persona Details
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-    const systemPrompt = getSystemPrompt(bento, results);
+    const cleanedText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const personaData = JSON.parse(cleanedText);
     
-    const generationResult = await model.generateContent(systemPrompt);
-    const generationResponse = await generationResult.response;
-    const rawText = generationResponse.text();
-
-    const cleanedText = rawText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    const parsedPersona = JSON.parse(cleanedText);
+    // Use existing ID if provided, otherwise generate a new one
+    const personaId = existingPersonaId || uuidv4();
+    const personaWithId = { ...personaData, id: personaId };
 
     // Generate Persona Image
     let imageUrl: string | null = null;
-    const imagePrompt = `a photorealistic headshot of ${parsedPersona.visualDescriptor}. The subject should be looking directly at the camera with a neutral, yet confident expression. The background must be a solid, pure white, empty background. The final image must be ultra-realistic, high resolution, 8k, and suitable for a corporate website or LinkedIn profile. Do not include shoulders or torso.`;
+    const imagePrompt = `a photorealistic headshot of ${personaWithId.visualDescriptor}. The subject should be looking directly at the camera with a neutral, yet confident expression. The background must be a solid, pure white, empty background. The final image must be ultra-realistic, high resolution, 8k, and suitable for a corporate website or LinkedIn profile. Do not include shoulders or torso.`;
     
     try {
       console.log(`[generate-persona] Generating image with prompt: "${imagePrompt}"`);
@@ -89,24 +92,34 @@ export async function POST(req: NextRequest) {
       }
     } catch (imageError) {
       console.error('[generate-persona] Image generation failed:', imageError);
-      // Keep imageUrl as null if image generation fails
     }
 
     const finalPersona: Persona = {
-      name: parsedPersona.name,
-      age: parsedPersona.age,
-      role: parsedPersona.role,
-      experience: parsedPersona.experience,
-      bio: parsedPersona.bio,
-      interests: parsedPersona.interests,
-      disinterests: parsedPersona.disinterests,
-      insights: parsedPersona.insights,
+      ...personaWithId,
       imageUrl: imageUrl,
     };
 
+    return finalPersona;
+  } catch (e) {
+    console.error("Failed to parse JSON from model:", text, e);
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error parsing model response';
+    throw new Error(errorMessage);
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const { bento, results, existingPersonaId } = await req.json();
+    if (!bento || !results) {
+      return new Response(JSON.stringify({ error: 'Invalid input' }), { status: 400 });
+    }
+    
+    const finalPersona = await generatePersona(bento, results, existingPersonaId);
     return NextResponse.json(finalPersona);
+
   } catch (err: any) {
     console.error('[generate-persona] CATCH BLOCK ERROR:', err);
-    return NextResponse.json({ error: 'Server error', details: err.message }, { status: 500 });
+    const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+    return NextResponse.json({ error: 'Server error', details: errorMessage }, { status: 500 });
   }
 } 
