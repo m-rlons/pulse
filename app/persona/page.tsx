@@ -4,8 +4,8 @@ import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { Persona, ChatMessage } from '../../lib/types';
-import { Loader, Edit, Send } from 'lucide-react';
+import { Persona, ChatMessage, AssessmentResult, Statement } from '../../lib/types';
+import { Loader, Edit, Send, MessageSquare, FileText, BarChart2 } from 'lucide-react';
 
 const DIMENSIONS = ["spend", "loyalty", "investment", "interest", "social", "novelty"];
 
@@ -17,7 +17,9 @@ function PersonaPageContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [view, setView] = useState<'chat' | 'bio'>('chat');
+  const [view, setView] = useState<'chat' | 'bio' | 'data'>('chat');
+  const [assessmentResults, setAssessmentResults] = useState<AssessmentResult[]>([]);
+  const [allStatements, setAllStatements] = useState<Statement[]>([]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -30,6 +32,8 @@ function PersonaPageContent() {
     try {
       const personaData = localStorage.getItem('persona');
       const chatHistoryData = localStorage.getItem('chatHistory');
+      const resultsData = localStorage.getItem('assessmentResults');
+      const statementsData = localStorage.getItem('statements');
 
       if (personaData) {
         const parsedPersona = JSON.parse(personaData);
@@ -44,6 +48,12 @@ function PersonaPageContent() {
 
       if (chatHistoryData) {
         setMessages(JSON.parse(chatHistoryData));
+      }
+      if (resultsData) {
+        setAssessmentResults(JSON.parse(resultsData));
+      }
+      if (statementsData) {
+        setAllStatements(JSON.parse(statementsData));
       }
     } catch (e: any) {
       setError(e.message);
@@ -155,7 +165,7 @@ function PersonaPageContent() {
   );
 
   const BioPanel = () => (
-    <div className="p-8 h-full overflow-y-auto">
+    <div className="p-8 h-full overflow-y-auto text-white">
         <h1 className="text-4xl font-bold">{persona.name}</h1>
         <p className="text-lg text-gray-300 mt-1">{persona.age} years old</p>
         <p className="text-lg text-gray-300">{persona.role} - {persona.experience}</p>
@@ -173,9 +183,77 @@ function PersonaPageContent() {
             <h3 className="font-bold mb-2 text-white">Disinterests</h3>
             <p>{persona.disinterests}</p>
           </div>
+           <div>
+            <h3 className="font-bold mb-2 text-white">Actionable Insights</h3>
+            <p className="whitespace-pre-wrap">{persona.insights}</p>
+          </div>
         </div>
     </div>
   );
+
+  const DataPanel = () => {
+    const dimensionScores = DIMENSIONS.reduce((acc, dim) => {
+      const relevantResults = assessmentResults.filter(r => r.dimension === dim);
+      if (relevantResults.length === 0) {
+        acc[dim] = 0;
+        return acc;
+      }
+      const sum = relevantResults.reduce((sum, r) => sum + r.score, 0);
+      acc[dim] = sum / relevantResults.length;
+      return acc;
+    }, {} as Record<string, number>);
+
+    return (
+      <div className="p-8 h-full overflow-y-auto text-white">
+        <h1 className="text-4xl font-bold">Persona Data</h1>
+        
+        <div className="mt-8">
+          <h3 className="font-bold mb-4 text-white text-xl">Dimension Scores</h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {Object.entries(dimensionScores).map(([dim, score]) => (
+              <div key={dim} className="bg-gray-800/50 p-4 rounded-lg">
+                <p className="text-sm capitalize text-gray-300">{dim}</p>
+                <p className={`text-3xl font-bold ${score > 0 ? 'text-green-400' : score < 0 ? 'text-red-400' : 'text-gray-400'}`}>
+                  {score > 0 ? `+${score.toFixed(2)}` : score.toFixed(2)}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-8">
+          <h3 className="font-bold mb-4 text-white text-xl">Full Swipe History</h3>
+          <div className="space-y-2 text-sm">
+            {assessmentResults.map((result, i) => {
+               const score = result.score;
+               const text = result.text || `A statement about ${result.dimension}`;
+               return (
+                <div key={i} className="bg-gray-800/50 p-3 rounded-md flex justify-between items-center">
+                  <span className="text-gray-300">{text}</span>
+                  <span className={`font-bold text-xs px-2 py-1 rounded-full ${
+                    score === 1 ? 'bg-green-500/20 text-green-300' : 
+                    score === -1 ? 'bg-red-500/20 text-red-300' :
+                    'bg-gray-500/20 text-gray-300'
+                  }`}>
+                    {score === 1 ? 'AGREE' : score === -1 ? 'DISAGREE' : 'SKIP'}
+                  </span>
+                </div>
+               )
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderPanel = () => {
+    switch (view) {
+      case 'chat': return <ChatPanel />;
+      case 'bio': return <BioPanel />;
+      case 'data': return <DataPanel />;
+      default: return <ChatPanel />;
+    }
+  }
 
   return (
     <div className="h-screen w-full bg-black md:bg-white text-black overflow-hidden md:flex">
@@ -190,10 +268,15 @@ function PersonaPageContent() {
         />
         {/* Mobile View Toggle */}
         <div className="md:hidden absolute top-8 left-8 z-20 flex gap-2">
-          <button onClick={() => setView(view === 'chat' ? 'bio' : 'chat')} className="flex items-center gap-2 text-sm font-semibold bg-black/50 text-white backdrop-blur-sm px-3 py-2 rounded-lg">
-              <Edit size={16} />
-              {view === 'chat' ? 'View Bio' : 'View Chat'}
-          </button>
+           <select 
+              onChange={(e) => setView(e.target.value as any)}
+              className="bg-black/50 text-white backdrop-blur-sm px-3 py-2 rounded-lg text-sm font-semibold appearance-none"
+              value={view}
+            >
+              <option value="chat">Chat</option>
+              <option value="bio">Bio</option>
+              <option value="data">Data</option>
+            </select>
            <select 
               onChange={(e) => handleEditDimension(e.target.value)}
               className="bg-black/50 text-white backdrop-blur-sm px-3 py-2 rounded-lg text-sm font-semibold appearance-none"
@@ -221,14 +304,21 @@ function PersonaPageContent() {
       </div>
 
       {/* Right side Panels (Desktop) / Overlay Panels (Mobile) */}
-      <div className="md:w-1/2 h-full flex flex-col">
+      <div className="md:w-1/2 h-full flex flex-col bg-gray-900">
         {/* Mobile View */}
-        <div className="md:hidden absolute inset-0 z-10 bg-black/30 backdrop-blur-md overflow-y-auto">
-          {view === 'chat' ? <ChatPanel /> : <BioPanel />}
+        <div className="md:hidden absolute inset-0 z-10 bg-black/50 backdrop-blur-md overflow-y-auto">
+          {renderPanel()}
         </div>
         {/* Desktop View */}
-        <div className="hidden md:flex w-full h-full">
-           <ChatPanel />
+        <div className="hidden md:flex w-full h-full flex-col">
+          <div className="flex-shrink-0 p-4 border-b border-gray-700">
+             <div className="flex items-center gap-2">
+                <button onClick={() => setView('chat')} className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm ${view === 'chat' ? 'bg-white text-black' : 'text-gray-300 hover:bg-gray-800'}`}><MessageSquare size={16}/> Chat</button>
+                <button onClick={() => setView('bio')} className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm ${view === 'bio' ? 'bg-white text-black' : 'text-gray-300 hover:bg-gray-800'}`}><FileText size={16}/> Bio</button>
+                <button onClick={() => setView('data')} className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm ${view === 'data' ? 'bg-white text-black' : 'text-gray-300 hover:bg-gray-800'}`}><BarChart2 size={16}/> Data</button>
+             </div>
+          </div>
+           {renderPanel()}
         </div>
       </div>
     </div>

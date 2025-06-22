@@ -46,7 +46,7 @@ export const SwipeInterface: React.FC<SwipeInterfaceProps> = ({ statements, onAs
       if (direction === 'left') score = -1;
       if (direction === 'right') score = 1;
 
-      setResults(prev => [...prev, { dimension: statements[currentIndex].dimension, score }]);
+      setResults(prev => [...prev, { dimension: statements[currentIndex].dimension, score, text: statements[currentIndex].text }]);
       
       setCurrentIndex(c => c + 1);
       setTimeout(() => setIsAnimating(false), 300);

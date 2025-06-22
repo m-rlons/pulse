@@ -47,6 +47,7 @@ export interface Persona {
 export interface AssessmentResult {
   dimension: string;
   score: number;
+  text?: string;
 }
 
 export interface ChatMessage {

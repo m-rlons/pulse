@@ -98,14 +98,15 @@ function SwipePageContent() {
 
     const generateAndSavePersona = async () => {
       let allResults = results;
-      if (refinementDimension) {
-          const existingResultsJSON = localStorage.getItem('assessmentResults');
-          if (existingResultsJSON) {
-              const existingResults: AssessmentResult[] = JSON.parse(existingResultsJSON);
-              const otherResults = existingResults.filter(r => r.dimension !== refinementDimension);
-              allResults = [...otherResults, ...results];
-          }
+      const existingResultsJSON = localStorage.getItem('assessmentResults');
+
+      if (refinementDimension && existingResultsJSON) {
+        // This is a refinement. Append new results to the old ones.
+        const existingResults: AssessmentResult[] = JSON.parse(existingResultsJSON);
+        allResults = [...existingResults, ...results];
       }
+      // For a first-time run, allResults is just the new results.
+      
       localStorage.setItem('assessmentResults', JSON.stringify(allResults));
       
       try {
