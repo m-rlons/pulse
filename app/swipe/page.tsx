@@ -34,7 +34,11 @@ export default function SwipePage() {
         }
 
         const data = await res.json();
-        setStatements(data.statements);
+        
+        // Randomize statements array
+        const shuffledStatements = data.statements.sort(() => Math.random() - 0.5);
+
+        setStatements(shuffledStatements);
         setShowIntro(true);
       } catch (err: any) {
         setError(err.message || 'An unknown error occurred.');
