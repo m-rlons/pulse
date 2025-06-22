@@ -294,35 +294,24 @@ function PersonaPageContent() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let done = false;
-      let fullResponse = '';
 
       while (!done) {
         const { value, done: readerDone } = await reader.read();
         done = readerDone;
-        fullResponse += decoder.decode(value, { stream: true });
-      }
-
-      // After stream is complete, parse as JSON and extract responseText
-      try {
-        const parsed = JSON.parse(fullResponse);
+        const chunk = decoder.decode(value, { stream: true });
+        
         setMessages(prev => {
-          const lastMsgIndex = prev.length - 1;
-          const updatedMessages = [...prev];
-          updatedMessages[lastMsgIndex].content = parsed.responseText || '';
-          return updatedMessages;
-        });
-      } catch (e) {
-        // fallback: show raw text
-        setMessages(prev => {
-          const lastMsgIndex = prev.length - 1;
-          const updatedMessages = [...prev];
-          updatedMessages[lastMsgIndex].content = fullResponse;
-          return updatedMessages;
+            const lastMsgIndex = prev.length - 1;
+            const updatedMessages = [...prev];
+            if(updatedMessages[lastMsgIndex]) {
+               updatedMessages[lastMsgIndex].content += chunk;
+            }
+            return updatedMessages;
         });
       }
 
       // After stream is complete, save the history
-      setMessages(prev => {
+       setMessages(prev => {
         if(persona?.id) {
           localStorage.setItem(`chatHistory_${persona.id}`, JSON.stringify(prev));
         }
