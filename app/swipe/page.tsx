@@ -100,12 +100,10 @@ function SwipePageContent() {
     const generateAndSavePersona = async () => {
       let allResults = results;
       let existingResults: AssessmentResult[] = [];
-      
       const storageKey = personaId ? `assessmentResults_${personaId}` : 'assessmentResults';
       const existingResultsJSON = localStorage.getItem(storageKey);
 
       if (refinementDimension && existingResultsJSON) {
-        // This is a refinement. Append new results to the old ones.
         existingResults = JSON.parse(existingResultsJSON);
         allResults = [...existingResults, ...results];
       }
@@ -119,16 +117,31 @@ function SwipePageContent() {
           body: JSON.stringify({ 
             bento, 
             results: allResults,
-            // Pass existing persona ID to keep it consistent after refinement
             existingPersonaId: personaId 
           }),
         });
+
         if (!response.ok) throw new Error('Failed to generate persona');
-        const persona: Persona = await response.json();
-        localStorage.setItem('persona', JSON.stringify(persona));
+        
+        const newOrUpdatedPersona: Persona = await response.json();
+        
+        // New logic: save to the 'personas' list
+        const personasJSON = localStorage.getItem('personas');
+        let personas: Persona[] = personasJSON ? JSON.parse(personasJSON) : [];
+
+        if (personaId) {
+          // This was a refinement, so update the existing persona
+          personas = personas.map(p => p.id === personaId ? newOrUpdatedPersona : p);
+        } else {
+          // This is a new persona, so add it to the list
+          personas.push(newOrUpdatedPersona);
+        }
+
+        localStorage.setItem('personas', JSON.stringify(personas));
+        // Also set the 'current' persona for immediate redirection
+        localStorage.setItem('persona', JSON.stringify(newOrUpdatedPersona));
+
       } catch (err: any) {
-          // This error will be caught by the promise rejection
-          // and can be handled if needed, but for now we just throw it
           throw err;
       }
     };
