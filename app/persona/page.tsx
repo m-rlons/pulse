@@ -7,6 +7,8 @@ import { motion } from 'framer-motion';
 import { Persona, ChatMessage } from '../../lib/types';
 import { Loader, Edit, Send } from 'lucide-react';
 
+const DIMENSIONS = ["spend", "loyalty", "investment", "interest", "social", "novelty"];
+
 function PersonaPageContent() {
   const router = useRouter();
   const [persona, setPersona] = useState<Persona | null>(null);
@@ -86,6 +88,10 @@ function PersonaPageContent() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleEditDimension = (dimension: string) => {
+    router.push(`/swipe?refine=${dimension}`);
   };
 
   if (isLoading && !persona) {
@@ -183,17 +189,35 @@ function PersonaPageContent() {
             priority
         />
         {/* Mobile View Toggle */}
-        <div className="md:hidden absolute top-8 left-8 z-20">
+        <div className="md:hidden absolute top-8 left-8 z-20 flex gap-2">
           <button onClick={() => setView(view === 'chat' ? 'bio' : 'chat')} className="flex items-center gap-2 text-sm font-semibold bg-black/50 text-white backdrop-blur-sm px-3 py-2 rounded-lg">
               <Edit size={16} />
               {view === 'chat' ? 'View Bio' : 'View Chat'}
           </button>
+           <select 
+              onChange={(e) => handleEditDimension(e.target.value)}
+              className="bg-black/50 text-white backdrop-blur-sm px-3 py-2 rounded-lg text-sm font-semibold appearance-none"
+              defaultValue=""
+            >
+              <option value="" disabled>Edit</option>
+              {DIMENSIONS.map(dim => (
+                <option key={dim} value={dim} className="capitalize text-black">{dim}</option>
+              ))}
+            </select>
         </div>
          {/* Desktop Edit Button */}
-         <button onClick={() => router.push('/')} className="hidden md:flex absolute top-8 left-8 items-center gap-2 text-sm font-semibold z-10 bg-white/50 backdrop-blur-sm px-3 py-2 rounded-lg">
-            <Edit size={16} />
-            Edit Persona
-        </button>
+         <div className="hidden md:flex absolute top-8 left-8 items-center gap-2 z-10">
+            <select 
+              onChange={(e) => handleEditDimension(e.target.value)}
+              className="bg-white/50 backdrop-blur-sm px-3 py-2 rounded-lg text-sm font-semibold appearance-none"
+              defaultValue=""
+            >
+              <option value="" disabled>Edit a Dimension</option>
+              {DIMENSIONS.map(dim => (
+                <option key={dim} value={dim} className="capitalize">{dim}</option>
+              ))}
+            </select>
+        </div>
       </div>
 
       {/* Right side Panels (Desktop) / Overlay Panels (Mobile) */}
