@@ -1,54 +1,71 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { v4 as uuidv4 } from 'uuid';
 import { Bento } from '../../../lib/types';
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+
+const systemPrompt = `You are a business analysis expert. Based on the user's business description, create a comprehensive business "bento box" with the following components:
+
+1. Business Model: A one-sentence description of how the business operates
+2. Customer Challenge: The main problem customers face that this business solves
+3. Product/Service: A clear description of what the business offers
+4. Positioning: How the business differentiates itself in the market
+5. Why We Exist: The company's mission or purpose
+6. Competitors: List 3-5 direct competitors
+
+Return ONLY a valid JSON object with this structure:
+{
+  "businessModel": "string",
+  "customerChallenge": "string",
+  "productService": "string",
+  "positioning": "string",
+  "whyWeExist": "string",
+  "competitors": ["competitor1", "competitor2", "competitor3"]
+}`;
 
 export async function POST(req: NextRequest) {
   try {
-    const { businessInput } = await req.json();
-    if (typeof businessInput !== 'string') {
-      return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+    const { description } = await req.json();
+    if (!description || typeof description !== 'string') {
+      return NextResponse.json({ error: 'Invalid input: description is required' }, { status: 400 });
     }
 
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      return NextResponse.json({ error: 'Missing Gemini API key' }, { status: 500 });
-    }
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-    const systemPrompt = `You are an expert business analyst. Your task is to analyze the following business description. Distill it into its core 'businessModel' and the primary 'customerChallenge'. Respond ONLY with a valid JSON object matching this TypeScript interface: interface Bento { businessModel: string; customerChallenge: string; }. Do not include markdown formatting, backticks, or any explanatory text. Here is the user's input: ${businessInput}`;
+    const userMessage = `Here is the user's business description: ${description}`;
 
-    // Use Gemini API key as a query parameter
-    const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: systemPrompt }] }],
-        }),
-      }
-    );
+    const result = await model.generateContent([
+      systemPrompt,
+      userMessage
+    ]);
 
-    if (!geminiRes.ok) {
-      const errorText = await geminiRes.text();
-      console.error('Full Gemini API error:', errorText);
-      return NextResponse.json({ error: 'Gemini API error', details: errorText }, { status: 500 });
-    }
+    const response = await result.response;
+    const text = response.text();
+    
+    const cleanedText = text
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim();
 
-    const geminiData = await geminiRes.json();
-    // Assume the model returns the JSON as a string in geminiData.candidates[0].content.parts[0].text
-    let bento: Bento;
-    try {
-      bento = JSON.parse(geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '{}');
-    } catch {
-      return NextResponse.json({ error: 'Invalid response from Gemini' }, { status: 500 });
-    }
+    const parsedResponse = JSON.parse(cleanedText);
 
-    if (!bento.businessModel || !bento.customerChallenge) {
-      return NextResponse.json({ error: 'Incomplete Bento data' }, { status: 500 });
-    }
+    const bento: Bento = {
+      id: uuidv4(),
+      businessDescription: description,
+      businessModel: parsedResponse.businessModel,
+      customerChallenge: parsedResponse.customerChallenge,
+      productService: parsedResponse.productService,
+      positioning: parsedResponse.positioning,
+      whyWeExist: parsedResponse.whyWeExist,
+      competitors: parsedResponse.competitors,
+      timestamp: Date.now(),
+    };
 
     return NextResponse.json(bento);
-  } catch (err) {
-    return NextResponse.json({ error: 'Server error' }, { status: 500 });
+  } catch (error) {
+    console.error('[generate-bento] Error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: 'Failed to generate bento', details: errorMessage }, { status: 500 });
   }
 } 

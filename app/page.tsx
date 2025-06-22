@@ -1,10 +1,26 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { AppStage, Bento, Statement, Persona, AssessmentResult } from '../lib/types';
 import { BentoBox } from '../components/BentoBox';
 import { SwipeInterface } from '../components/SwipeInterface';
 import { PersonaDisplay } from '../components/PersonaDisplay';
+import PersonaChat from '../components/PersonaChat';
+
+const isBentoComplete = (bento: any): bento is Bento => {
+  return (
+    bento &&
+    typeof bento.id === 'string' &&
+    typeof bento.businessDescription === 'string' &&
+    typeof bento.businessModel === 'string' &&
+    typeof bento.customerChallenge === 'string' &&
+    typeof bento.productService === 'string' &&
+    typeof bento.positioning === 'string' &&
+    typeof bento.whyWeExist === 'string' &&
+    Array.isArray(bento.competitors) &&
+    typeof bento.timestamp === 'number'
+  );
+};
 
 export default function HomePage() {
   // === STATE MANAGEMENT ===
@@ -17,6 +33,41 @@ export default function HomePage() {
   const [statements, setStatements] = useState<Statement[]>([]);
   const [persona, setPersona] = useState<Persona | null>(null);
 
+  // === LOCALSTORAGE PERSISTENCE ===
+  useEffect(() => {
+    try {
+      const savedStage = localStorage.getItem('pulse_app_stage');
+      const savedBentoJSON = localStorage.getItem('pulse_bento');
+
+      if (savedBentoJSON && savedStage) {
+        const savedBento = JSON.parse(savedBentoJSON);
+        // Migration check: ensure the stored bento has the new fields
+        if (isBentoComplete(savedBento)) {
+          setBento(savedBento);
+          setStage(savedStage as AppStage);
+        } else {
+          // If data is old/incomplete, clear it and start over
+          localStorage.removeItem('pulse_app_stage');
+          localStorage.removeItem('pulse_bento');
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load state from localStorage", e);
+      // If there's any error, start fresh
+      localStorage.removeItem('pulse_app_stage');
+      localStorage.removeItem('pulse_bento');
+    }
+  }, []); // Empty dependency array means this runs once on mount
+
+  useEffect(() => {
+    if (stage !== 'INPUT') {
+      localStorage.setItem('pulse_app_stage', stage);
+      if (bento) {
+        localStorage.setItem('pulse_bento', JSON.stringify(bento));
+      }
+    }
+  }, [stage, bento]);
+
   // === API HANDLER FUNCTIONS ===
   const handleGenerateBento = useCallback(async () => {
     setIsLoading(true);
@@ -25,7 +76,7 @@ export default function HomePage() {
       const res = await fetch('/api/generate-bento', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ businessInput }),
+        body: JSON.stringify({ description: businessInput }),
       });
       if (!res.ok) throw new Error((await res.json()).error || 'Failed to generate bento');
       const data: Bento = await res.json();
@@ -88,6 +139,9 @@ export default function HomePage() {
     setBento(null);
     setStatements([]);
     setPersona(null);
+    // Clear localStorage
+    localStorage.removeItem('pulse_app_stage');
+    localStorage.removeItem('pulse_bento');
   }, []);
 
   // === RENDER LOGIC ===
@@ -143,6 +197,14 @@ export default function HomePage() {
           <PersonaDisplay
             persona={persona}
             onRestart={handleRestart}
+            onChat={() => setStage('CHAT')}
+          />
+        );
+      case 'CHAT':
+        return persona && (
+          <PersonaChat
+            persona={persona}
+            onExit={() => setStage('PERSONA_RESULT')}
           />
         );
       default:
