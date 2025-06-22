@@ -60,6 +60,14 @@ function SwipePageContent() {
     fetchStatements();
   }, [refinementDimension]);
 
+  const handleStartOver = () => {
+    localStorage.removeItem('bento');
+    localStorage.removeItem('assessmentResults');
+    localStorage.removeItem('persona');
+    localStorage.removeItem('chatHistory');
+    router.push('/');
+  };
+
   const handleAssessmentComplete = async (results: AssessmentResult[]) => {
     setIsLoading(true);
     let allResults = results;
@@ -96,6 +104,22 @@ function SwipePageContent() {
     }
   };
 
+  // Effect for keyboard navigation on the intro screen
+  useEffect(() => {
+    if (!showIntro) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        setShowIntro(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [showIntro]);
+
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 text-gray-800">
@@ -115,17 +139,36 @@ function SwipePageContent() {
   
   if (showIntro) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-white text-black p-8 text-center animate-fade-in">
-        <h1 className="text-4xl md:text-5xl font-bold mb-4">First, we need to understand your customer's values.</h1>
-        <p className="text-lg md:text-xl text-gray-600 mb-8 max-w-2xl">Answer these questions from the perspective of your ideal customer. This will help us create a realistic persona for you.</p>
-        <button
-          onClick={() => setShowIntro(false)}
-          className="bg-black text-white px-8 py-4 rounded-full font-medium hover:bg-gray-800 transition-all text-lg shadow-md"
-        >
-          Begin Assessment
-        </button>
+      <div className="flex flex-col h-screen bg-white text-black p-12 animate-fade-in">
+        <div className="flex-grow flex flex-col justify-center">
+          <h1 className="text-8xl font-black text-gray-900 tracking-tighter leading-tight">
+            We need to<br />
+            understand your<br />
+            customer's values.
+          </h1>
+          <p className="text-3xl text-gray-500 mt-8">
+            You're going to swipe through some questions.
+          </p>
+        </div>
+        <div className="flex justify-between items-center">
+          <button
+            onClick={handleStartOver}
+            className="bg-red-500 text-white font-bold py-3 px-6 rounded-md text-lg hover:bg-red-600 transition-colors"
+          >
+            Start Over
+          </button>
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => setShowIntro(false)}
+              className="bg-black text-white font-semibold py-3 px-6 rounded-md text-lg hover:bg-gray-800 transition-colors"
+            >
+              Sounds good, next
+            </button>
+            <span className="text-gray-500 text-sm">Or Press Enter</span>
+          </div>
+        </div>
       </div>
-    )
+    );
   }
 
   return (

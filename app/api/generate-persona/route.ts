@@ -62,20 +62,31 @@ export async function POST(req: NextRequest) {
     
     try {
       console.log(`[generate-persona] Generating image with prompt: "${imagePrompt}"`);
-      const imageModel = genAI.getGenerativeModel({ model: "imagen-3.0-generate-002" });
+      const imageApiUrl = `https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-002:predict?key=${process.env.GEMINI_API_KEY}`;
       
-      const result = await imageModel.generateContent(imagePrompt);
-      const response = await result.response;
-      
-      const firstPart = response.candidates?.[0]?.content?.parts[0];
+      const imageResponse = await fetch(imageApiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          instances: [{ prompt: imagePrompt }],
+          parameters: { sampleCount: 1 }
+        })
+      });
 
-      if (firstPart && 'inlineData' in firstPart && firstPart.inlineData) {
-        imageUrl = `data:image/png;base64,${firstPart.inlineData.data}`;
-        console.log('[generate-persona] Image generated successfully.');
-      } else {
-        console.error('[generate-persona] No image data found in API response:', JSON.stringify(response, null, 2));
+      if (!imageResponse.ok) {
+        const errorBody = await imageResponse.text();
+        throw new Error(`Image generation API failed with status ${imageResponse.status}: ${errorBody}`);
       }
 
+      const imageResult = await imageResponse.json();
+      
+      if (imageResult.predictions && imageResult.predictions.length > 0) {
+        const base64Data = imageResult.predictions[0].bytesBase64Encoded;
+        imageUrl = `data:image/png;base64,${base64Data}`;
+        console.log('[generate-persona] Image generated successfully.');
+      } else {
+        console.error('[generate-persona] No image data found in API response:', imageResult);
+      }
     } catch (imageError) {
       console.error('[generate-persona] Image generation failed:', imageError);
       // Keep imageUrl as null if image generation fails
