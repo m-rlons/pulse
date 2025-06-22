@@ -1,4 +1,5 @@
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { Bento } from '../lib/types';
 
 // Add competitor logo mapping
@@ -33,82 +34,64 @@ export interface BentoBoxProps {
 }
 
 export const BentoBox: React.FC<BentoBoxProps> = ({ bento, onApprove, onRetry, isLoading }) => {
+  const router = useRouter();
+
   return (
-    <div className="rounded-2xl shadow-2xl p-8 bg-white max-w-6xl mx-auto">
-      <div className="space-y-8">
-        <h2 className="text-4xl font-bold text-center mb-8 text-gray-800">Business Bento</h2>
+    <div className="max-w-4xl mx-auto p-8 animate-fade-in">
+      <h1 className="text-4xl font-bold mb-8">Business Bento</h1>
+      
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="card bg-white p-6 rounded-2xl shadow-sm">
+          <h3 className="font-semibold mb-2 text-sm text-gray-600">Product/Service</h3>
+          <p className="text-gray-900">{bento.productService}</p>
+        </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Product/Service */}
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-2xl border border-blue-100">
-            <h3 className="font-bold text-xl mb-3 text-blue-800">Product/Service</h3>
-            <p className="text-gray-700 leading-relaxed">{bento.productService}</p>
-          </div>
-
-          {/* Positioning */}
-          <div className="bg-gradient-to-br from-purple-50 to-pink-50 p-6 rounded-2xl border border-purple-100">
-            <h3 className="font-bold text-xl mb-3 text-purple-800">Positioning</h3>
-            <p className="text-gray-700 leading-relaxed">{bento.positioning}</p>
-          </div>
-
-          {/* Direct Competitors */}
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-            <h3 className="font-bold text-xl mb-4 text-gray-900">Direct Competitors</h3>
-            <div className="flex flex-wrap gap-4">
-              {bento.competitors.map((competitor, index) => (
-                <div key={index} className="flex items-center gap-3">
-                  {competitorLogos[competitor] ? (
-                    <img 
-                      src={competitorLogos[competitor]} 
-                      alt={competitor}
-                      className="w-12 h-12 rounded-xl object-contain bg-gray-50 p-2 border border-gray-200"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center text-white font-bold text-lg">
-                      {competitor.charAt(0)}
-                    </div>
-                  )}
-                  <span className="text-sm font-medium text-gray-700">{competitor}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+        <div className="card bg-white p-6 rounded-2xl shadow-sm">
+          <h3 className="font-semibold mb-2 text-sm text-gray-600">Positioning</h3>
+          <p className="text-gray-900">{bento.positioning}</p>
         </div>
-
-        {/* Why We Exist - Full Width */}
-        <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-8 rounded-2xl border border-green-100">
-          <h3 className="font-bold text-2xl mb-4 text-green-800">Why We Exist</h3>
-          <p className="text-gray-700 leading-relaxed text-lg">{bento.whyWeExist}</p>
-        </div>
-
-        {/* Original fields */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-gradient-to-br from-blue-50 to-cyan-50 p-6 rounded-2xl border border-blue-100">
-            <h3 className="font-bold text-xl mb-3 text-blue-800">Business Model</h3>
-            <p className="text-gray-700 leading-relaxed">{bento.businessModel}</p>
-          </div>
-
-          <div className="bg-gradient-to-br from-red-50 to-pink-50 p-6 rounded-2xl border border-red-100">
-            <h3 className="font-bold text-xl mb-3 text-red-800">Customer Challenge</h3>
-            <p className="text-gray-700 leading-relaxed">{bento.customerChallenge}</p>
+        
+        <div className="card bg-white p-6 rounded-2xl shadow-sm">
+          <h3 className="font-semibold mb-2 text-sm text-gray-600">Direct Competitors</h3>
+          <div className="flex flex-wrap gap-4 items-center mt-2">
+            {bento.competitors.map((competitor, index) => (
+              <div key={index} className="flex items-center gap-2">
+                {competitorLogos[competitor] ? (
+                  <img 
+                    src={competitorLogos[competitor]} 
+                    alt={competitor}
+                    className="w-10 h-10 rounded-lg object-contain"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 font-bold">
+                    {competitor.charAt(0)}
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
         </div>
       </div>
       
-      <div className="flex gap-4 justify-end mt-8">
+      <div className="card bg-white p-6 rounded-2xl shadow-sm mt-6">
+        <h3 className="font-semibold mb-2 text-sm text-gray-600">Why We Exist</h3>
+        <p className="text-gray-900">{bento.whyWeExist}</p>
+      </div>
+      
+      <div className="flex justify-between mt-16">
         <button
-          className="px-8 py-4 rounded-full bg-gray-200 text-gray-700 font-semibold hover:bg-gray-300 disabled:opacity-60 disabled:cursor-not-allowed transition-all hover:scale-105 shadow-lg"
-          onClick={onRetry}
-          disabled={isLoading}
+          onClick={() => router.push('/')}
+          className="bg-red-500 text-white px-8 py-4 rounded-full font-medium hover:bg-red-600 transition-all"
         >
-          {isLoading ? 'Regenerating...' : 'Retry'}
+          Start Over
         </button>
+        
         <button
-          className="px-8 py-4 rounded-full bg-black text-white font-semibold hover:bg-gray-800 disabled:opacity-60 disabled:cursor-not-allowed transition-all hover:scale-105 shadow-lg"
           onClick={onApprove}
           disabled={isLoading}
+          className="bg-black text-white px-8 py-4 rounded-full font-medium hover:bg-gray-800 transition-all disabled:opacity-50"
         >
-          {isLoading ? 'Please wait...' : 'Looks good, next'}
+          Looks good, next
           <span className="ml-2">→</span>
         </button>
       </div>
