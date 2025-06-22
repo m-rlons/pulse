@@ -5,7 +5,7 @@ import { Bento, AssessmentResult, Persona } from '../../../lib/types';
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 const getSystemPrompt = (bento: Bento, results: AssessmentResult[]): string => `
-You are a world-class marketing strategist and storyteller. Based on the provided business context and the business owner's assessment of their customers (scores: -1=disagree, 0=neutral, 1=agree), create a detailed, realistic customer persona. The persona should feel like a real person.
+You are a world-class marketing strategist and storyteller. Based on the provided business context and the business owner's assessment of their customers (scores: -1=disagree, 0=neutral, 1=agree), create a detailed, realistic customer persona. The persona should feel like a real person that is a potential customer for the described business.
 
 BUSINESS CONTEXT
 - Business Model: ${bento.businessModel}
@@ -22,12 +22,15 @@ INSTRUCTIONS
 Generate a JSON object with EXACTLY this TypeScript structure:
 \`\`\`json
 {
-  "name": "string (e.g., 'Maria Garcia')",
-  "age": "number (e.g., 34)",
-  "teachingYears": "number (e.g., 8)",
-  "description": "string (A 2-3 sentence summary of the persona's professional life, their core motivations, and primary frustrations related to their work.)",
+  "name": "string (e.g., 'Alex Chen')",
+  "age": "number (e.g., 42)",
+  "role": "string (The persona's job title or primary role, e.g., 'Senior Project Manager')",
+  "experience": "string (A brief summary of their years/type of experience, e.g., '15 years in tech')",
+  "bio": "string (A 2-3 sentence summary of the persona's professional life, their core motivations, and primary frustrations related to their work.)",
+  "interests": "string (A short paragraph describing their relevant professional and personal interests.)",
+  "disinterests": "string (A short paragraph describing things they dislike or find uninteresting, both professionally and personally.)",
   "insights": "string (A single paragraph of 3-4 actionable insights for a business owner trying to connect with this persona. What are their key purchasing drivers? What messages will resonate? What are their biggest unmet needs?)",
-  "visualDescriptor": "string (A detailed visual description for an image generator. Describe their appearance, clothing, and a subtle expression that hints at their personality. e.g., 'A 34-year-old Latina teacher with warm eyes, wearing a casual but professional knit sweater. She has a faint, thoughtful smile, suggesting she is both caring and analytical.')"
+  "visualDescriptor": "string (A detailed visual description for an image generator. Describe their appearance, clothing, and a subtle expression that hints at their personality. e.g., 'A 42-year-old Asian man with glasses, wearing a sharp, well-fitting business-casual shirt. He has a focused, determined expression.')"
 }
 \`\`\`
 
@@ -58,16 +61,17 @@ export async function POST(req: NextRequest) {
     const imagePrompt = `headshot portrait of ${parsedPersona.visualDescriptor}, white background, professional photograph, high resolution, looking at camera, symmetrical, shot on camera, 8k, high detail`;
     
     try {
-      const imageResult = await genAI.getGenerativeModel({ model: "imagen-3.0-generate-002" }).generateContent(imagePrompt);
-      // This is a simplified way to handle the response; the actual SDK might have a different structure
-      // For now, we assume a method to get the base64 image exists and handle it.
-      // The exact method depends on the SDK version and model specifics.
-      // This part is illustrative and may need adjustment based on actual API response.
-      // Let's assume for now we can't get the image and set it to null.
-      // The previous code used fetch, which is different. The new SDK for Imagen might not be as straightforward.
-      // Sticking to a null image for now to avoid breaking changes on an unfamiliar API.
-      // const base64Image = imageResult.response....; 
-      // imageUrl = `data:image/png;base64,${base64Image}`;
+      const imageModel = genAI.getGenerativeModel({ model: "imagen-3.0-generate-002" });
+      const imageResult = await imageModel.generateContent(imagePrompt);
+      const imageResponse = await imageResult.response;
+      
+      const firstPart = imageResponse.candidates?.[0]?.content?.parts[0];
+      if (firstPart && 'inlineData' in firstPart && firstPart.inlineData) {
+          imageUrl = `data:image/png;base64,${firstPart.inlineData.data}`;
+      } else {
+        console.error('[generate-persona] No image data found in response');
+      }
+
     } catch (imageError) {
       console.error('[generate-persona] Image generation failed:', imageError);
       // Keep imageUrl as null if image generation fails
@@ -76,10 +80,13 @@ export async function POST(req: NextRequest) {
     const finalPersona: Persona = {
       name: parsedPersona.name,
       age: parsedPersona.age,
-      teachingYears: parsedPersona.teachingYears,
-      description: parsedPersona.description,
+      role: parsedPersona.role,
+      experience: parsedPersona.experience,
+      bio: parsedPersona.bio,
+      interests: parsedPersona.interests,
+      disinterests: parsedPersona.disinterests,
       insights: parsedPersona.insights,
-      imageUrl: imageUrl, // Assign the generated (or null) image URL
+      imageUrl: imageUrl,
     };
 
     return NextResponse.json(finalPersona);

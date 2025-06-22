@@ -1,57 +1,75 @@
 'use client';
-
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { Persona } from '../../lib/types';
-import { PersonaDisplay } from '../../components/PersonaDisplay';
 import PersonaChat from '../../components/PersonaChat';
+import { PersonaDisplay } from '../../components/PersonaDisplay';
 
 export default function PersonaPage() {
   const [persona, setPersona] = useState<Persona | null>(null);
-  const [isChatting, setIsChatting] = useState(false);
+  const [view, setView] = useState<'chat' | 'edit'>('chat');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
   const router = useRouter();
 
   useEffect(() => {
-    const savedPersona = localStorage.getItem('persona');
-    if (savedPersona) {
-      setPersona(JSON.parse(savedPersona));
+    const personaData = localStorage.getItem('persona');
+    if (personaData) {
+      const parsedPersona = JSON.parse(personaData);
+      setPersona(parsedPersona);
+      setLoading(false);
+      // If there's no image, it might be the first time.
+      // Or if it's explicitly null from a failed generation.
+      if (!parsedPersona.imageUrl) {
+        console.log("No image found, but persona data exists. Chat can proceed.");
+      }
     } else {
-      // If no persona is found, maybe redirect to the beginning
-      router.push('/');
+      setError('No persona data found. Please create a persona first.');
+      setLoading(false);
+      // Optionally redirect
+      // router.push('/'); 
     }
-  }, [router]);
+  }, []);
 
-  const handleRestart = () => {
-    // Clear all relevant local storage and go home
-    localStorage.removeItem('persona');
-    localStorage.removeItem('bento');
-    localStorage.removeItem('businessDescription');
-    router.push('/');
-  };
-
-  if (!persona) {
+  if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-white p-4">
-        <h2 className="text-2xl font-semibold text-gray-700">Loading your Persona...</h2>
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-2xl font-semibold">Loading Persona...</div>
       </div>
     );
   }
 
-  if (isChatting) {
+  if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-        <PersonaChat persona={persona} onExit={() => setIsChatting(false)} />
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-2xl text-red-500">{error}</div>
+      </div>
+    );
+  }
+
+  if (!persona) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="text-2xl font-semibold">Generating your persona...</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
-      <PersonaDisplay 
-        persona={persona} 
-        onRestart={handleRestart}
-        onChat={() => setIsChatting(true)}
-      />
+    <div className="w-full h-screen bg-white text-black">
+      {view === 'chat' && (
+        <PersonaChat
+          persona={persona}
+          onEdit={() => setView('edit')}
+        />
+      )}
+      {view === 'edit' && (
+        <PersonaDisplay
+          persona={persona}
+          onBackToChat={() => setView('chat')}
+        />
+      )}
     </div>
   );
 } 

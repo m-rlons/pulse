@@ -1,156 +1,205 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
-import { Send } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { Persona, ChatMessage } from '../lib/types';
+import { Loader, Send, User, Bot, CornerUpLeft, MessageSquarePlus } from 'lucide-react';
 
 interface PersonaChatProps {
   persona: Persona;
-  onExit: () => void;
+  onEdit: () => void;
 }
 
-export default function PersonaChat({ persona, onExit }: PersonaChatProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>([
-    {
-      role: 'persona',
-      content: `Hi there! I'm ${persona.name}. It's great to connect.`
-    },
-    {
-      role: 'persona',
-      content: "I'm ready to chat about my experiences and what I look for in classroom tools. What's on your mind?"
-    }
-  ]);
+const PersonaChat: React.FC<PersonaChatProps> = ({ persona, onEdit }) => {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [refinement, setRefinement] = useState<{dimension: string | null}>({ dimension: null });
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+  useEffect(scrollToBottom, [messages]);
 
-  const sendMessage = async () => {
+  // Fetch initial message from the persona
+  useEffect(() => {
+    const getInitialMessage = async () => {
+      // Don't fetch if there are already messages (e.g., after a refinement loop)
+      if(messages.length > 0) {
+        setIsLoading(false);
+        return;
+      }
+      try {
+        const response = await fetch('/api/chat-with-persona', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            persona,
+            chatHistory: [],
+            message: "Give me a friendly, in-character greeting."
+          }),
+        });
+        if (!response.ok) throw new Error('Failed to get initial message');
+        const data = await response.json();
+        setMessages([{ role: 'persona', content: data.responseText }]);
+      } catch (error) {
+        console.error(error);
+        setMessages([{ role: 'persona', content: `Hello, I'm ${persona.name}. It's nice to meet you.` }]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    getInitialMessage();
+  }, [persona]);
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!input.trim() || isLoading) return;
 
     const userMessage: ChatMessage = { role: 'user', content: input };
-    const newMessages = [...messages, userMessage];
-    setMessages(newMessages);
+    setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
+    setRefinement({ dimension: null }); // Clear any previous refinement suggestions
 
     try {
       const response = await fetch('/api/chat-with-persona', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: input,
           persona,
-          chatHistory: newMessages.slice(0, -1) // Send history *before* user's latest message
-        })
+          chatHistory: messages, // Pass current history
+          message: input,
+        }),
       });
 
-      if (!response.ok) {
-        throw new Error('API Error: ' + (await response.json()).error);
-      }
+      if (!response.ok) throw new Error('Network response was not ok');
 
       const data = await response.json();
-      setMessages(prev => [...prev, { role: 'persona', content: data.message }]);
+      setMessages(prev => [...prev, { role: 'persona', content: data.responseText }]);
+      
+      if (data.isCorrection && data.dimension) {
+        setRefinement({ dimension: data.dimension });
+      }
+
     } catch (error) {
-      console.error('Chat error:', error);
-      setMessages(prev => [...prev, { role: 'persona', content: "I'm sorry, I encountered an error and can't respond right now." }]);
+      console.error('Failed to get response:', error);
+      setMessages(prev => [...prev, { role: 'persona', content: "I'm sorry, I'm having trouble connecting right now." }]);
     } finally {
       setIsLoading(false);
     }
   };
+  
+  const handleRefineClick = () => {
+    if(!refinement.dimension) return;
+    // Save current chat history to local storage to persist it across navigation
+    localStorage.setItem('chatHistory', JSON.stringify(messages));
+    router.push(`/swipe?refine=${encodeURIComponent(refinement.dimension)}`);
+  }
+
+  // On component mount, check if there's a chat history in local storage
+  useEffect(() => {
+    const savedHistory = localStorage.getItem('chatHistory');
+    if (savedHistory) {
+      setMessages(JSON.parse(savedHistory));
+      localStorage.removeItem('chatHistory'); // Clear it after loading
+    }
+  }, []);
+
 
   return (
-    <div className="flex h-[calc(100vh-120px)] max-w-6xl mx-auto rounded-lg shadow-2xl bg-white">
-      {/* Left side - Persona Info */}
-      <div className="w-1/3 p-8 border-r bg-gray-50 rounded-l-lg flex flex-col">
-        <button onClick={onExit} className="mb-6 text-sm text-gray-500 hover:text-gray-800 self-start">← Back to Results</button>
-        {persona.imageUrl && (
-          <img 
-            src={persona.imageUrl} 
-            alt={persona.name}
-            className="w-full rounded-lg mb-6 shadow-md"
-          />
-        )}
-        <h1 className="text-3xl font-bold mb-2">{persona.name}</h1>
-        <p className="text-gray-600 mb-6">
-          {persona.age} years old | {persona.teachingYears} years teaching
-        </p>
-        <div className="overflow-y-auto pr-2">
-            <h3 className="font-semibold text-lg mb-2 text-gray-800">Summary</h3>
-            <p className="text-sm text-gray-600 mb-4">{persona.description}</p>
-            <h3 className="font-semibold text-lg mb-2 text-gray-800">Actionable Insights</h3>
-            <p className="text-sm text-gray-600">{persona.insights}</p>
+    <div className="flex h-screen bg-white">
+      {/* Left side: Persona Image and Edit button */}
+      <div className="w-1/2 flex flex-col justify-center items-center p-8 border-r border-gray-200">
+        <div className="w-full max-w-md">
+          <button onClick={onEdit} className="text-sm font-semibold mb-4 hover:underline">
+            Edit Persona
+          </button>
+          {persona.imageUrl ? (
+            <Image
+              src={persona.imageUrl}
+              alt={persona.name}
+              width={512}
+              height={512}
+              className="rounded-lg object-cover w-full aspect-square"
+              priority
+            />
+          ) : (
+            <div className="w-full aspect-square bg-gray-200 rounded-lg flex items-center justify-center">
+              <span className="text-gray-500">No Image Available</span>
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Right side - Chat */}
-      <div className="flex-1 flex flex-col">
-        <div className="p-4 border-b text-center">
-          <h2 className="font-semibold text-xl">Chat with {persona.name}</h2>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-6 space-y-4">
-          {messages.map((message, index) => (
-            <div
-              key={index}
-              className={`flex items-end gap-2 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              {message.role === 'persona' && (
-                <img src={persona.imageUrl || '/default-avatar.png'} alt="persona avatar" className="w-8 h-8 rounded-full"/>
+      
+      {/* Right side: Chat Interface */}
+      <div className="w-1/2 flex flex-col">
+        <div className="flex-1 overflow-y-auto p-8 space-y-4">
+          {/* Messages */}
+          {messages.map((msg, index) => (
+            <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
+              {msg.role === 'persona' && (
+                <div className="w-8 h-8 rounded-full bg-gray-300 flex-shrink-0" />
               )}
-              <div
-                className={`max-w-md px-4 py-2 rounded-2xl ${
-                  message.role === 'user'
-                    ? 'bg-blue-600 text-white rounded-br-none'
-                    : 'bg-gray-200 text-gray-800 rounded-bl-none'
-                }`}
-              >
-                {message.content}
+              <div className={`max-w-md p-4 rounded-2xl ${ msg.role === 'persona' ? 'bg-black text-white' : 'bg-gray-100 text-black' }`}>
+                <p>{msg.content}</p>
               </div>
             </div>
           ))}
-          {isLoading && (
-            <div className="flex items-end gap-2 justify-start">
-               <img src={persona.imageUrl || '/default-avatar.png'} alt="persona avatar" className="w-8 h-8 rounded-full"/>
-               <div className="bg-gray-200 text-gray-800 px-4 py-2 rounded-2xl rounded-bl-none">
-                <div className="flex items-center justify-center gap-1">
-                    <span className="h-2 w-2 bg-gray-400 rounded-full animate-pulse [animation-delay:-0.3s]"></span>
-                    <span className="h-2 w-2 bg-gray-400 rounded-full animate-pulse [animation-delay:-0.15s]"></span>
-                    <span className="h-2 w-2 bg-gray-400 rounded-full animate-pulse"></span>
+          
+          {/* Loading Indicator */}
+          {isLoading && messages.length > 0 && (
+             <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-gray-300 flex-shrink-0" />
+                <div className="max-w-md p-4 rounded-2xl bg-black text-white">
+                    <Loader className="animate-spin" size={20} />
                 </div>
-              </div>
+             </div>
+          )}
+
+          {/* Refinement Button */}
+          {refinement.dimension && !isLoading && (
+            <div className="flex justify-center py-4">
+              <button
+                onClick={handleRefineClick}
+                className="bg-blue-600 text-white font-semibold px-6 py-3 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-all shadow-md"
+              >
+                <MessageSquarePlus size={20}/>
+                Refine Understanding of "{refinement.dimension}"
+              </button>
             </div>
           )}
+
           <div ref={messagesEndRef} />
         </div>
 
-        <div className="p-4 border-t bg-gray-50 rounded-b-lg">
-          <div className="flex items-center gap-2">
+        {/* Input Form */}
+        <div className="p-4 border-t border-gray-200">
+          <form onSubmit={handleSend} className="relative">
             <input
               type="text"
               value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-              placeholder="Ask a question..."
-              className="flex-1 px-4 py-2 border bg-white rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+              onChange={e => setInput(e.target.value)}
+              placeholder="what do you do?"
+              className="w-full p-4 pr-12 text-black bg-white border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-black"
+              disabled={isLoading}
             />
             <button
-              onClick={sendMessage}
+              type="submit"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black disabled:opacity-50"
               disabled={isLoading || !input.trim()}
-              className="p-3 bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <Send size={20} />
             </button>
-          </div>
+          </form>
         </div>
       </div>
     </div>
-  )
-} 
+  );
+};
+
+export default PersonaChat; 
