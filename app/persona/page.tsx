@@ -1,11 +1,12 @@
 'use client';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Persona } from '../../lib/types';
 import PersonaChat from '../../components/PersonaChat';
 import { PersonaDisplay } from '../../components/PersonaDisplay';
+import { Loader } from 'lucide-react';
 
-export default function PersonaPage() {
+function PersonaPageContent() {
   const [persona, setPersona] = useState<Persona | null>(null);
   const [view, setView] = useState<'chat' | 'edit'>('chat');
   const [loading, setLoading] = useState(true);
@@ -34,7 +35,8 @@ export default function PersonaPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex flex-col items-center justify-center h-screen">
+        <Loader className="animate-spin mb-4" size={48} />
         <div className="text-2xl font-semibold">Loading Persona...</div>
       </div>
     );
@@ -71,5 +73,18 @@ export default function PersonaPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function PersonaPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col items-center justify-center h-screen">
+        <Loader className="animate-spin mb-4" size={48} />
+        <div className="text-2xl font-semibold">Loading Page...</div>
+      </div>
+    }>
+      <PersonaPageContent />
+    </Suspense>
   );
 } 

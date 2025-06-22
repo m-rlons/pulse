@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Bento, Statement, AssessmentResult, Persona } from '../../lib/types';
 import { SwipeInterface } from '../../components/SwipeInterface';
 import { Loader } from 'lucide-react';
 
-export default function SwipePage() {
+function SwipePageContent() {
   const [bento, setBento] = useState<Bento | null>(null);
   const [statements, setStatements] = useState<Statement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -132,5 +132,18 @@ export default function SwipePage() {
     <div className="min-h-screen bg-white">
       <SwipeInterface statements={statements} onComplete={handleAssessmentComplete} />
     </div>
+  );
+}
+
+export default function SwipePage() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 text-gray-800">
+        <Loader className="animate-spin mb-4" size={48} />
+        <p className="text-xl font-medium">Loading Assessment...</p>
+      </div>
+    }>
+      <SwipePageContent />
+    </Suspense>
   );
 } 
