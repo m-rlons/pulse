@@ -94,6 +94,20 @@ export const SwipeInterface: React.FC<SwipeInterfaceProps> = ({ statements, onCo
     }
   };
 
+  const cardVariants = {
+    initial: (direction: typeof exitDirection) => ({
+      opacity: 0,
+      y: direction === 'up' ? -300 : 50,
+      scale: 0.95,
+    }),
+    animate: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+    },
+    exit: (direction: typeof exitDirection) => getExitAnimation(direction),
+  };
+
   const progress = statements.length > 0 ? (currentIndex / statements.length) * 100 : 0;
 
   return (
@@ -115,9 +129,11 @@ export const SwipeInterface: React.FC<SwipeInterfaceProps> = ({ statements, onCo
             <motion.div
               key={currentIndex}
               className="absolute"
-              initial={{ opacity: 0, y: exitDirection === 'up' ? -300 : 0, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={getExitAnimation(exitDirection)}
+              variants={cardVariants}
+              custom={exitDirection}
+              initial="initial"
+              animate="animate"
+              exit="exit"
               transition={{ type: 'spring', stiffness: 300, damping: 30 }}
               drag={true}
               dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
@@ -154,7 +170,7 @@ export const SwipeInterface: React.FC<SwipeInterfaceProps> = ({ statements, onCo
 
         {allAnswered ? (
             <div className="flex items-center gap-4">
-                <span className="text-gray-500 text-sm">Or Press Enter</span>
+                <span className="text-gray-500 text-sm">Or Press Cmd + Enter</span>
                 <button
                     onClick={handleContinue}
                     className="bg-black text-white px-6 py-3 rounded-md font-semibold hover:bg-gray-800 transition-colors text-base"

@@ -39,7 +39,7 @@ export default function OnboardingFlow() {
           </p>
         </div>
         
-        <form onSubmit={(e) => { e.preventDefault(); handleNext(); }}>
+        <form onSubmit={(e) => { e.preventDefault(); handleNext(); }} className="flex items-center gap-4">
           <input
             type="text"
             value={businessDescription}
@@ -48,6 +48,13 @@ export default function OnboardingFlow() {
             className="w-full p-4 border-b-2 border-gray-300 focus:outline-none focus:border-black text-2xl bg-transparent"
             autoFocus
           />
+           <button
+            type="submit"
+            className="px-6 py-3 bg-black text-white rounded-md text-lg font-semibold hover:bg-gray-800 disabled:bg-gray-400"
+            disabled={!businessDescription.trim()}
+          >
+            Submit
+          </button>
         </form>
       </div>
     </div>
