@@ -39,7 +39,7 @@ export default function OnboardingFlow() {
           </p>
         </div>
         
-        <form onSubmit={(e) => { e.preventDefault(); handleNext(); }} className="flex items-center justify-between">
+        <form onSubmit={(e) => { e.preventDefault(); handleNext(); }} className="flex items-end justify-between">
           <input
             type="text"
             value={businessDescription}
