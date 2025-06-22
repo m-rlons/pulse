@@ -35,13 +35,13 @@ export const PersonaDisplay: React.FC<PersonaDisplayProps> = ({ persona, onResta
       <div className="mt-8 flex justify-center gap-4">
         <button
           onClick={onRestart}
-          className="px-6 py-2 rounded-lg bg-gray-200 text-gray-700 font-semibold hover:bg-gray-300 transition-colors"
+          className="btn-secondary"
         >
           Start Over
         </button>
         <button
           onClick={onChat}
-          className="px-6 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-colors shadow-md"
+          className="btn-primary shadow-lg"
         >
           Chat with {persona.name}
         </button>

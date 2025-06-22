@@ -169,7 +169,7 @@ export default function HomePage() {
             />
             <button
               type="submit"
-              className="px-4 py-2 rounded bg-curious-blue text-why-white font-semibold disabled:opacity-60 disabled:cursor-not-allowed mt-2"
+              className="btn-primary disabled:opacity-60 disabled:cursor-not-allowed mt-2"
               disabled={isLoading || !businessInput.trim()}
             >
               {isLoading ? 'Loading...' : 'Analyze'}

@@ -1,15 +1,24 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, TargetAndTransition } from 'framer-motion';
+import { ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 import { Statement, AssessmentResult } from '../lib/types';
-import { StatementCard } from './StatementCard';
 
 export interface SwipeInterfaceProps {
   statements: Statement[];
   onComplete: (results: AssessmentResult[]) => void;
 }
 
+// Add these gradient backgrounds for the cards
+const gradients = [
+  'bg-gradient-to-br from-orange-400 via-pink-500 to-purple-400',
+  'bg-gradient-to-br from-blue-400 via-purple-500 to-pink-400',
+  'bg-gradient-to-br from-green-400 via-teal-500 to-blue-400',
+  'bg-gradient-to-br from-yellow-400 via-orange-500 to-red-400',
+  'bg-gradient-to-br from-purple-400 via-pink-500 to-red-400'
+];
+
 export const SwipeInterface: React.FC<SwipeInterfaceProps> = ({ statements, onComplete }) => {
-  const [current, setCurrent] = useState(0);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [results, setResults] = useState<AssessmentResult[]>([]);
   const [isAnimating, setIsAnimating] = useState(false);
   const [exitDirection, setExitDirection] = useState<'left' | 'right' | 'down' | null>(null);
@@ -29,7 +38,7 @@ export const SwipeInterface: React.FC<SwipeInterfaceProps> = ({ statements, onCo
 
   const handleSwipe = useCallback(
     (direction: 'left' | 'right' | 'down') => {
-      if (isAnimating || current >= statements.length) return;
+      if (isAnimating || currentIndex >= statements.length) return;
       
       setIsAnimating(true);
       setExitDirection(direction);
@@ -38,23 +47,27 @@ export const SwipeInterface: React.FC<SwipeInterfaceProps> = ({ statements, onCo
       if (direction === 'left') score = -1;
       if (direction === 'right') score = 1;
 
-      const newResults = [...results, { dimension: statements[current].dimension, score }];
+      const newResults = [...results, { dimension: statements[currentIndex].dimension, score }];
       setResults(newResults);
 
       // Wait for exit animation to complete before finishing
       setTimeout(() => {
-        if (current === statements.length - 1) {
+        if (currentIndex === statements.length - 1) {
           onComplete(newResults);
         }
       }, 300);
       
-      setCurrent(c => c + 1);
+      setCurrentIndex(c => c + 1);
 
       // Animation lock
       setTimeout(() => setIsAnimating(false), 300);
     },
-    [current, statements, onComplete, results, isAnimating]
+    [currentIndex, statements, onComplete, results, isAnimating]
   );
+
+  const skipStatement = useCallback(() => {
+    handleSwipe('down');
+  }, [handleSwipe]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -85,14 +98,15 @@ export const SwipeInterface: React.FC<SwipeInterfaceProps> = ({ statements, onCo
 
   return (
     <div className="w-full flex flex-col items-center">
-      <div className="mb-4 text-golly-gold font-medium">
-        {Math.min(current + 1, statements.length)} / {statements.length}
+      <div className="mb-6 text-gray-600 font-medium text-lg">
+        {Math.min(currentIndex + 1, statements.length)} / {statements.length}
       </div>
+      
       <div ref={containerRef} className="relative w-full flex justify-center items-center h-[520px]">
         <AnimatePresence custom={exitDirection}>
-          {current < statements.length && (
+          {currentIndex < statements.length && (
             <motion.div
-              key={statements[current].dimension}
+              key={statements[currentIndex].dimension}
               className="absolute h-full w-full max-w-sm flex items-center justify-center"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -105,18 +119,61 @@ export const SwipeInterface: React.FC<SwipeInterfaceProps> = ({ statements, onCo
               whileDrag={{ scale: 1.05 }}
               style={{ touchAction: 'none', cursor: 'grab' }}
             >
-              <StatementCard text={statements[current].text} />
+              {/* Update the card component */}
+              <div className={`
+                relative w-80 h-96 rounded-3xl p-8 text-white
+                ${gradients[currentIndex % gradients.length]}
+                shadow-2xl flex items-center justify-center
+              `}>
+                <p className="text-2xl font-bold text-center lowercase">
+                  {statements[currentIndex].text}
+                </p>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
       </div>
-      <div className="flex flex-col items-center mt-4 w-[300px]">
-        <div className="flex justify-between w-full">
-          <span className="text-sm text-inquisitive-red font-semibold">← Disagree</span>
-          <span className="text-sm text-curious-blue font-semibold">Agree →</span>
+
+      {/* Update the swipe buttons */}
+      <div className="flex gap-4 mt-8">
+        <button
+          onClick={() => handleSwipe('left')}
+          className="w-16 h-16 bg-red-500 rounded-full flex items-center justify-center text-white shadow-lg hover:scale-110 transition-transform"
+        >
+          <ChevronLeft size={32} />
+        </button>
+        
+        <button
+          onClick={skipStatement}
+          className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center text-white shadow-lg hover:scale-110 transition-transform"
+        >
+          <ChevronDown size={32} />
+        </button>
+        
+        <button
+          onClick={() => handleSwipe('right')}
+          className="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center text-white shadow-lg hover:scale-110 transition-transform"
+        >
+          <ChevronRight size={32} />
+        </button>
+      </div>
+
+      <div className="flex flex-col items-center mt-6 text-sm text-gray-500">
+        <div className="flex gap-8 mb-2">
+          <span className="flex items-center gap-1">
+            <ChevronLeft size={16} />
+            Disagree
+          </span>
+          <span className="flex items-center gap-1">
+            Agree
+            <ChevronRight size={16} />
+          </span>
         </div>
-        <span className="text-sm text-heedless-black/70 mt-2">↓ Skip/Neutral</span>
-        <span className="text-xs text-heedless-black/50 mt-1">or use arrow keys</span>
+        <span className="flex items-center gap-1">
+          <ChevronDown size={16} />
+          Skip/Neutral
+        </span>
+        <span className="text-xs mt-1">or use arrow keys</span>
       </div>
     </div>
   );

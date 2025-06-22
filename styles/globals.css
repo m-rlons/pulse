@@ -1,3 +1,38 @@
 @tailwind base;
 @tailwind components;
-@tailwind utilities; 
+@tailwind utilities;
+
+/* Modern button styles */
+.btn-primary {
+  @apply bg-black text-white px-6 py-3 rounded-full font-medium hover:bg-gray-800 transition-all hover:scale-105;
+}
+
+.btn-secondary {
+  @apply bg-red-500 text-white px-6 py-3 rounded-full font-medium hover:bg-red-600 transition-all hover:scale-105;
+}
+
+/* Card shadows and rounded corners */
+.card {
+  @apply bg-white rounded-2xl shadow-sm p-6;
+}
+
+/* Smooth transitions */
+* {
+  @apply transition-colors duration-200;
+}
+
+/* Custom animations */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out;
+} 
