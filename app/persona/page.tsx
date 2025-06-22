@@ -9,6 +9,188 @@ import { Loader, Edit, Send, MessageSquare, FileText, BarChart2, Paperclip, X } 
 
 const DIMENSIONS = ["spend", "loyalty", "investment", "interest", "social", "novelty"];
 
+interface ChatPanelProps {
+  messages: ChatMessage[];
+  isLoading: boolean;
+  input: string;
+  setInput: React.Dispatch<React.SetStateAction<string>>;
+  handleSend: (e: React.FormEvent) => Promise<void>;
+  documents: Document[];
+  selectedDocument: string | null;
+  setSelectedDocument: React.Dispatch<React.SetStateAction<string | null>>;
+  personaName: string;
+}
+
+// Moved ChatPanel outside to prevent re-creation on render
+const ChatPanel: React.FC<ChatPanelProps> = ({ messages, isLoading, input, setInput, handleSend, documents, selectedDocument, setSelectedDocument, personaName }) => {
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  useEffect(scrollToBottom, [messages]);
+  
+  return (
+    <div className="w-full h-full flex flex-col">
+       <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-4">
+        {messages.map((msg, index) => (
+          <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
+            {msg.role === 'persona' && (
+              <div className="w-8 h-8 rounded-full bg-gray-300 flex-shrink-0" />
+            )}
+            <div className={`max-w-md p-4 rounded-2xl ${ msg.role === 'persona' ? 'bg-black text-white' : 'bg-gray-100 text-black' }`}>
+              <p>{msg.content}</p>
+            </div>
+          </div>
+        ))}
+        {isLoading && (
+           <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-full bg-gray-300 flex-shrink-0" />
+              <div className="max-w-md p-4 rounded-2xl bg-black text-white">
+                  <Loader className="animate-spin" size={20} />
+              </div>
+           </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+      <div className="p-4">
+        {documents.length > 0 && (
+          <div className="mb-2">
+            {selectedDocument ? (
+              <div className="flex items-center justify-between p-2 text-sm bg-violet-100 text-violet-800 rounded-md">
+                <div className="flex items-center gap-2">
+                  <Paperclip size={14} />
+                  <span className="font-medium">{selectedDocument}</span>
+                </div>
+                <button onClick={() => setSelectedDocument(null)} className="p-1 rounded-full hover:bg-violet-200">
+                  <X size={16} />
+                </button>
+              </div>
+            ) : (
+              <select
+                onChange={(e) => setSelectedDocument(e.target.value || null)}
+                className="w-full p-2 text-sm text-gray-500 bg-gray-50 rounded-md border-gray-200 focus:outline-none focus:ring-1 focus:ring-black"
+                value={selectedDocument || ''}
+              >
+                <option value="">Attach a document...</option>
+                {documents.map((doc) => (
+                  <option key={doc.name} value={doc.name}>{doc.name}</option>
+                ))}
+              </select>
+            )}
+          </div>
+        )}
+        <form onSubmit={handleSend} className="relative">
+          <input
+            type="text"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            placeholder={`what do you do, ${personaName}?`}
+            className="w-full p-4 pr-12 text-black bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-black"
+            disabled={isLoading}
+          />
+          <button type="submit" className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black disabled:opacity-50" disabled={isLoading || !input.trim()}>
+            <Send size={20} />
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+interface BioPanelProps {
+  persona: Persona;
+}
+
+// Moved BioPanel outside
+const BioPanel: React.FC<BioPanelProps> = ({ persona }) => (
+  <div className="p-8 h-full overflow-y-auto text-white">
+    <h1 className="text-4xl font-bold">{persona.name}</h1>
+    <p className="text-lg text-gray-300 mt-1">{persona.age} years old</p>
+    <p className="text-lg text-gray-300">{persona.role} - {persona.experience}</p>
+    
+    <div className="mt-8 space-y-6 text-base text-gray-200">
+      <div>
+        <h3 className="font-bold mb-2 text-white">Bio</h3>
+        <p className="whitespace-pre-wrap">{persona.bio}</p>
+      </div>
+      <div>
+        <h3 className="font-bold mb-2 text-white">Interests</h3>
+        <p>{persona.interests}</p>
+      </div>
+      <div>
+        <h3 className="font-bold mb-2 text-white">Disinterests</h3>
+        <p>{persona.disinterests}</p>
+      </div>
+       <div>
+        <h3 className="font-bold mb-2 text-white">Actionable Insights</h3>
+        <p className="whitespace-pre-wrap">{persona.insights}</p>
+      </div>
+    </div>
+  </div>
+);
+
+interface DataPanelProps {
+  assessmentResults: AssessmentResult[];
+}
+
+// Moved DataPanel outside
+const DataPanel: React.FC<DataPanelProps> = ({ assessmentResults }) => {
+  const dimensionScores = DIMENSIONS.reduce((acc, dim) => {
+    const relevantResults = assessmentResults.filter(r => r.dimension === dim);
+    if (relevantResults.length === 0) {
+      acc[dim] = 0;
+      return acc;
+    }
+    const sum = relevantResults.reduce((sum, r) => sum + r.score, 0);
+    acc[dim] = sum / relevantResults.length;
+    return acc;
+  }, {} as Record<string, number>);
+
+  return (
+    <div className="p-8 h-full overflow-y-auto text-white">
+      <h1 className="text-4xl font-bold">Persona Data</h1>
+      
+      <div className="mt-8">
+        <h3 className="font-bold mb-4 text-white text-xl">Dimension Scores</h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          {Object.entries(dimensionScores).map(([dim, score]) => (
+            <div key={dim} className="bg-gray-800/50 p-4 rounded-lg">
+              <p className="text-sm capitalize text-gray-300">{dim}</p>
+              <p className={`text-3xl font-bold ${score > 0 ? 'text-green-400' : score < 0 ? 'text-red-400' : 'text-gray-400'}`}>
+                {score > 0 ? `+${score.toFixed(2)}` : score.toFixed(2)}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-8">
+        <h3 className="font-bold mb-4 text-white text-xl">Full Swipe History</h3>
+        <div className="space-y-2 text-sm">
+          {assessmentResults.map((result, i) => {
+             const score = result.score;
+             const text = result.text || `A statement about ${result.dimension}`;
+             return (
+              <div key={i} className="bg-gray-800/50 p-3 rounded-md flex justify-between items-center">
+                <span className="text-gray-300">{text}</span>
+                <span className={`font-bold text-xs px-2 py-1 rounded-full ${
+                  score === 1 ? 'bg-green-500/20 text-green-300' : 
+                  score === -1 ? 'bg-red-500/20 text-red-300' :
+                  'bg-gray-500/20 text-gray-300'
+                }`}>
+                  {score === 1 ? 'AGREE' : score === -1 ? 'DISAGREE' : 'SKIP'}
+                </span>
+              </div>
+             )
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
 function PersonaPageContent() {
   const router = useRouter();
   const [persona, setPersona] = useState<Persona | null>(null);
@@ -16,21 +198,14 @@ function PersonaPageContent() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const [view, setView] = useState<'chat' | 'bio' | 'data'>('chat');
   const [assessmentResults, setAssessmentResults] = useState<AssessmentResult[]>([]);
   const [allStatements, setAllStatements] = useState<Statement[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<string | null>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  useEffect(scrollToBottom, [messages]);
-  
-  // Load persona and initial chat history
   useEffect(() => {
+    // Load persona and initial chat history
     try {
       const personaData = localStorage.getItem('persona');
       const chatHistoryData = localStorage.getItem('chatHistory');
@@ -141,163 +316,28 @@ function PersonaPageContent() {
   
   if (!persona) return null; // Should be handled by loading/error states
 
-  const ChatPanel = () => (
-    <div className="w-full h-full flex flex-col">
-      <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-4">
-        {messages.map((msg, index) => (
-          <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
-            {msg.role === 'persona' && (
-              <div className="w-8 h-8 rounded-full bg-gray-300 flex-shrink-0" />
-            )}
-            <div className={`max-w-md p-4 rounded-2xl ${ msg.role === 'persona' ? 'bg-black text-white' : 'bg-gray-100 text-black' }`}>
-              <p>{msg.content}</p>
-            </div>
-          </div>
-        ))}
-        {isLoading && (
-           <div className="flex items-start gap-3">
-              <div className="w-8 h-8 rounded-full bg-gray-300 flex-shrink-0" />
-              <div className="max-w-md p-4 rounded-2xl bg-black text-white">
-                  <Loader className="animate-spin" size={20} />
-              </div>
-           </div>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
-      <div className="p-4">
-        {documents.length > 0 && (
-          <div className="mb-2">
-            {selectedDocument ? (
-              <div className="flex items-center justify-between p-2 text-sm bg-violet-100 text-violet-800 rounded-md">
-                <div className="flex items-center gap-2">
-                  <Paperclip size={14} />
-                  <span className="font-medium">{selectedDocument}</span>
-                </div>
-                <button onClick={() => setSelectedDocument(null)} className="p-1 rounded-full hover:bg-violet-200">
-                  <X size={16} />
-                </button>
-              </div>
-            ) : (
-              <select
-                onChange={(e) => setSelectedDocument(e.target.value || null)}
-                className="w-full p-2 text-sm text-gray-500 bg-gray-50 rounded-md border-gray-200 focus:outline-none focus:ring-1 focus:ring-black"
-                value=""
-              >
-                <option value="">Attach a document...</option>
-                {documents.map((doc) => (
-                  <option key={doc.name} value={doc.name}>{doc.name}</option>
-                ))}
-              </select>
-            )}
-          </div>
-        )}
-        <form onSubmit={handleSend} className="relative">
-          <input
-            type="text"
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            placeholder={`what do you do, ${persona.name}?`}
-            className="w-full p-4 pr-12 text-black bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-black"
-            disabled={isLoading}
-          />
-          <button type="submit" className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black disabled:opacity-50" disabled={isLoading || !input.trim()}>
-            <Send size={20} />
-          </button>
-        </form>
-      </div>
-    </div>
-  );
-
-  const BioPanel = () => (
-    <div className="p-8 h-full overflow-y-auto text-white">
-        <h1 className="text-4xl font-bold">{persona.name}</h1>
-        <p className="text-lg text-gray-300 mt-1">{persona.age} years old</p>
-        <p className="text-lg text-gray-300">{persona.role} - {persona.experience}</p>
-        
-        <div className="mt-8 space-y-6 text-base text-gray-200">
-          <div>
-            <h3 className="font-bold mb-2 text-white">Bio</h3>
-            <p className="whitespace-pre-wrap">{persona.bio}</p>
-          </div>
-          <div>
-            <h3 className="font-bold mb-2 text-white">Interests</h3>
-            <p>{persona.interests}</p>
-          </div>
-          <div>
-            <h3 className="font-bold mb-2 text-white">Disinterests</h3>
-            <p>{persona.disinterests}</p>
-          </div>
-           <div>
-            <h3 className="font-bold mb-2 text-white">Actionable Insights</h3>
-            <p className="whitespace-pre-wrap">{persona.insights}</p>
-          </div>
-        </div>
-    </div>
-  );
-
-  const DataPanel = () => {
-    const dimensionScores = DIMENSIONS.reduce((acc, dim) => {
-      const relevantResults = assessmentResults.filter(r => r.dimension === dim);
-      if (relevantResults.length === 0) {
-        acc[dim] = 0;
-        return acc;
-      }
-      const sum = relevantResults.reduce((sum, r) => sum + r.score, 0);
-      acc[dim] = sum / relevantResults.length;
-      return acc;
-    }, {} as Record<string, number>);
-
-    return (
-      <div className="p-8 h-full overflow-y-auto text-white">
-        <h1 className="text-4xl font-bold">Persona Data</h1>
-        
-        <div className="mt-8">
-          <h3 className="font-bold mb-4 text-white text-xl">Dimension Scores</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {Object.entries(dimensionScores).map(([dim, score]) => (
-              <div key={dim} className="bg-gray-800/50 p-4 rounded-lg">
-                <p className="text-sm capitalize text-gray-300">{dim}</p>
-                <p className={`text-3xl font-bold ${score > 0 ? 'text-green-400' : score < 0 ? 'text-red-400' : 'text-gray-400'}`}>
-                  {score > 0 ? `+${score.toFixed(2)}` : score.toFixed(2)}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-8">
-          <h3 className="font-bold mb-4 text-white text-xl">Full Swipe History</h3>
-          <div className="space-y-2 text-sm">
-            {assessmentResults.map((result, i) => {
-               const score = result.score;
-               const text = result.text || `A statement about ${result.dimension}`;
-               return (
-                <div key={i} className="bg-gray-800/50 p-3 rounded-md flex justify-between items-center">
-                  <span className="text-gray-300">{text}</span>
-                  <span className={`font-bold text-xs px-2 py-1 rounded-full ${
-                    score === 1 ? 'bg-green-500/20 text-green-300' : 
-                    score === -1 ? 'bg-red-500/20 text-red-300' :
-                    'bg-gray-500/20 text-gray-300'
-                  }`}>
-                    {score === 1 ? 'AGREE' : score === -1 ? 'DISAGREE' : 'SKIP'}
-                  </span>
-                </div>
-               )
-            })}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   const renderPanel = () => {
     switch (view) {
-      case 'chat': return <ChatPanel />;
-      case 'bio': return <BioPanel />;
-      case 'data': return <DataPanel />;
-      default: return <ChatPanel />;
+      case 'chat':
+        return <ChatPanel 
+          messages={messages} 
+          isLoading={isLoading} 
+          input={input} 
+          setInput={setInput} 
+          handleSend={handleSend}
+          documents={documents}
+          selectedDocument={selectedDocument}
+          setSelectedDocument={setSelectedDocument}
+          personaName={persona.name}
+        />;
+      case 'bio':
+        return <BioPanel persona={persona} />;
+      case 'data':
+        return <DataPanel assessmentResults={assessmentResults} />;
+      default:
+        return null;
     }
-  }
+  };
 
   return (
     <div className="h-screen w-full bg-black md:bg-white text-black overflow-hidden md:flex">
