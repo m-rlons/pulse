@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { ArrowRight } from 'lucide-react'
 
 export default function OnboardingFlow() {
   const [businessDescription, setBusinessDescription] = useState('')
@@ -40,15 +41,17 @@ export default function OnboardingFlow() {
         </div>
         
         <form onSubmit={(e) => { e.preventDefault(); handleNext(); }} className="flex items-end justify-between">
-          <input
-            type="text"
-            value={businessDescription}
-            onChange={(e) => setBusinessDescription(e.target.value)}
-            placeholder="what do you do?"
-            className="w-full p-4 border-b-2 border-gray-300 focus:outline-none focus:border-black text-2xl bg-transparent"
-            autoFocus
-          />
-          <div className="flex flex-col items-center">
+          <div className="flex-grow mr-8">
+            <input
+              type="text"
+              value={businessDescription}
+              onChange={(e) => setBusinessDescription(e.target.value)}
+              placeholder="what do you do?"
+              className="w-full p-4 border-b-2 border-gray-300 focus:outline-none focus:border-black text-2xl bg-transparent"
+              autoFocus
+            />
+          </div>
+          <div className="relative">
              <button
                 type="submit"
                 className="bg-black text-white font-semibold py-3 px-6 rounded-md text-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
@@ -56,7 +59,9 @@ export default function OnboardingFlow() {
               >
                 Next
               </button>
-              <span className="text-gray-500 text-sm mt-2">Or Press Enter</span>
+              <span className="absolute top-full left-1/2 -translate-x-1/2 w-full text-center text-gray-500 text-sm mt-2 flex items-center justify-center gap-2">
+                <ArrowRight size={14} /> Or Press Enter
+              </span>
           </div>
         </form>
       </div>
