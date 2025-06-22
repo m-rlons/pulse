@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
 
     // Generate Persona Image
     let imageUrl: string | null = null;
-    const imagePrompt = `a realistic, professional headshot of ${parsedPersona.visualDescriptor}. The subject should be looking directly at the camera with a neutral, yet confident expression. The background must be a solid, plain white background. The final image must be photorealistic, high resolution, 8k, and suitable for a corporate website or LinkedIn profile.`;
+    const imagePrompt = `a photorealistic headshot of ${parsedPersona.visualDescriptor}. The subject should be looking directly at the camera with a neutral, yet confident expression. The background must be a solid, pure white, empty background. The final image must be ultra-realistic, high resolution, 8k, and suitable for a corporate website or LinkedIn profile. Do not include shoulders or torso.`;
     
     try {
       console.log(`[generate-persona] Generating image with prompt: "${imagePrompt}"`);
