@@ -21,7 +21,10 @@ Return ONLY a valid JSON object with this structure:
   "productService": "string",
   "positioning": "string",
   "whyWeExist": "string",
-  "competitors": ["competitor1", "competitor2", "competitor3"]
+  "competitors": [
+    { "name": "Competitor 1", "domain": "competitor1.com" },
+    { "name": "Competitor 2", "domain": "competitor2.com" }
+  ]
 }`;
 
 export async function POST(req: NextRequest) {

@@ -1,29 +1,31 @@
-import React from 'react';
+'use client';
+
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Bento } from '../lib/types';
 
-// Add competitor logo mapping
-const competitorLogos: Record<string, string> = {
-  'Kahoot': '/logos/kahoot.png',
-  'Diff': '/logos/diff.png',
-  'Magic School': '/logos/magic-school.png',
-  'Nearpod': '/logos/nearpod.png',
-  'Quizizz': '/logos/quizizz.png',
-  'Blooket': '/logos/blooket.png',
-  'Gimkit': '/logos/gimkit.png',
-  'ClassDojo': '/logos/classdojo.png',
-  'Seesaw': '/logos/seesaw.png',
-  'Flipgrid': '/logos/flipgrid.png',
-  'Padlet': '/logos/padlet.png',
-  'Canva': '/logos/canva.png',
-  'Google Classroom': '/logos/google-classroom.png',
-  'Microsoft Teams': '/logos/teams.png',
-  'Zoom': '/logos/zoom.png',
-  'Slack': '/logos/slack.png',
-  'Notion': '/logos/notion.png',
-  'Trello': '/logos/trello.png',
-  'Asana': '/logos/asana.png',
-  'Monday.com': '/logos/monday.png'
+const CompetitorLogo = ({ name, domain }: { name: string; domain: string }) => {
+  const [hasError, setHasError] = useState(false);
+  const logoUrl = `https://logo.clearbit.com/${domain}`;
+
+  return (
+    <a href={`https://${domain}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-2 rounded-lg hover:bg-gray-50 transition-colors">
+      <div className="w-12 h-12 flex items-center justify-center bg-gray-100 rounded-xl">
+        {hasError ? (
+          <div className="w-full h-full rounded-xl bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center text-gray-500 font-bold text-lg">
+            {name.charAt(0)}
+          </div>
+        ) : (
+          <img 
+            src={logoUrl} 
+            alt={`${name} logo`}
+            className="w-full h-full object-contain rounded-xl"
+            onError={() => setHasError(true)}
+          />
+        )}
+      </div>
+    </a>
+  );
 };
 
 export interface BentoBoxProps {
@@ -37,51 +39,49 @@ export const BentoBox: React.FC<BentoBoxProps> = ({ bento, onApprove, onRetry, i
   const router = useRouter();
 
   return (
-    <div className="max-w-4xl mx-auto p-8 animate-fade-in">
-      <h1 className="text-4xl font-bold mb-8">Business Bento</h1>
+    <div className="w-full max-w-5xl mx-auto p-8 animate-fade-in bg-white">
+      <h1 className="text-4xl font-bold mb-12">Business Bento</h1>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="card bg-white p-6 rounded-2xl shadow-sm">
-          <h3 className="font-semibold mb-2 text-sm text-gray-600">Product/Service</h3>
-          <p className="text-gray-900">{bento.productService}</p>
+        {/* Column 1 */}
+        <div className="space-y-6">
+          <h3 className="font-semibold text-gray-900">Product/Service</h3>
+          <p className="text-gray-700 leading-relaxed">
+            {bento.productService}
+          </p>
         </div>
         
-        <div className="card bg-white p-6 rounded-2xl shadow-sm">
-          <h3 className="font-semibold mb-2 text-sm text-gray-600">Positioning</h3>
-          <p className="text-gray-900">{bento.positioning}</p>
+        {/* Column 2 */}
+        <div className="space-y-6">
+          <h3 className="font-semibold text-gray-900">Positioning</h3>
+          <p className="text-gray-700 leading-relaxed">
+            {bento.positioning}
+          </p>
         </div>
         
-        <div className="card bg-white p-6 rounded-2xl shadow-sm">
-          <h3 className="font-semibold mb-2 text-sm text-gray-600">Direct Competitors</h3>
-          <div className="flex flex-wrap gap-4 items-center mt-2">
+        {/* Column 3 */}
+        <div className="space-y-6">
+          <h3 className="font-semibold text-gray-900">Direct Competitors</h3>
+          <div className="flex flex-wrap gap-2">
             {bento.competitors.map((competitor, index) => (
-              <div key={index} className="flex items-center gap-2">
-                {competitorLogos[competitor] ? (
-                  <img 
-                    src={competitorLogos[competitor]} 
-                    alt={competitor}
-                    className="w-10 h-10 rounded-lg object-contain"
-                  />
-                ) : (
-                  <div className="w-10 h-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 font-bold">
-                    {competitor.charAt(0)}
-                  </div>
-                )}
-              </div>
+              <CompetitorLogo key={index} name={competitor.name} domain={competitor.domain} />
             ))}
           </div>
         </div>
       </div>
       
-      <div className="card bg-white p-6 rounded-2xl shadow-sm mt-6">
-        <h3 className="font-semibold mb-2 text-sm text-gray-600">Why We Exist</h3>
-        <p className="text-gray-900">{bento.whyWeExist}</p>
+      {/* Full-width Row */}
+      <div className="mt-10 pt-10 border-t border-gray-200">
+        <h3 className="font-semibold text-gray-900">Why We Exist</h3>
+        <p className="text-gray-700 leading-relaxed mt-4 max-w-3xl">
+          {bento.whyWeExist}
+        </p>
       </div>
       
-      <div className="flex justify-between mt-16">
+      <div className="flex justify-between items-center mt-16">
         <button
           onClick={() => router.push('/')}
-          className="bg-red-500 text-white px-8 py-4 rounded-full font-medium hover:bg-red-600 transition-all"
+          className="bg-red-500 text-white px-8 py-4 rounded-full font-medium hover:bg-red-600 transition-all text-lg"
         >
           Start Over
         </button>
