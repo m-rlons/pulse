@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Generate Persona Details
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const systemPrompt = getSystemPrompt(bento, results);
     
     const generationResult = await model.generateContent(systemPrompt);
@@ -58,18 +58,22 @@ export async function POST(req: NextRequest) {
 
     // Generate Persona Image
     let imageUrl: string | null = null;
-    const imagePrompt = `headshot portrait of ${parsedPersona.visualDescriptor}, white background, professional photograph, high resolution, looking at camera, symmetrical, shot on camera, 8k, high detail`;
+    const imagePrompt = `a realistic, professional headshot of ${parsedPersona.visualDescriptor}. The subject should be looking directly at the camera with a neutral, yet confident expression. The background must be a solid, plain white background. The final image must be photorealistic, high resolution, 8k, and suitable for a corporate website or LinkedIn profile.`;
     
     try {
+      console.log(`[generate-persona] Generating image with prompt: "${imagePrompt}"`);
       const imageModel = genAI.getGenerativeModel({ model: "imagen-3.0-generate-002" });
-      const imageResult = await imageModel.generateContent(imagePrompt);
-      const imageResponse = await imageResult.response;
       
-      const firstPart = imageResponse.candidates?.[0]?.content?.parts[0];
+      const result = await imageModel.generateContent(imagePrompt);
+      const response = await result.response;
+      
+      const firstPart = response.candidates?.[0]?.content?.parts[0];
+
       if (firstPart && 'inlineData' in firstPart && firstPart.inlineData) {
-          imageUrl = `data:image/png;base64,${firstPart.inlineData.data}`;
+        imageUrl = `data:image/png;base64,${firstPart.inlineData.data}`;
+        console.log('[generate-persona] Image generated successfully.');
       } else {
-        console.error('[generate-persona] No image data found in response');
+        console.error('[generate-persona] No image data found in API response:', JSON.stringify(response, null, 2));
       }
 
     } catch (imageError) {

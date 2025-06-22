@@ -8,10 +8,9 @@ import { Loader, Send, User, Bot, CornerUpLeft, MessageSquarePlus } from 'lucide
 
 interface PersonaChatProps {
   persona: Persona;
-  onEdit: () => void;
 }
 
-const PersonaChat: React.FC<PersonaChatProps> = ({ persona, onEdit }) => {
+const PersonaChat: React.FC<PersonaChatProps> = ({ persona }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -112,13 +111,41 @@ const PersonaChat: React.FC<PersonaChatProps> = ({ persona, onEdit }) => {
 
 
   return (
-    <div className="flex h-screen bg-white">
-      {/* Left side: Persona Image and Edit button */}
-      <div className="w-1/2 flex flex-col justify-center items-center p-8 border-r border-gray-200">
-        <div className="w-full max-w-md">
-          <button onClick={onEdit} className="text-sm font-semibold mb-4 hover:underline">
-            Edit Persona
-          </button>
+    <div className="flex h-screen bg-white text-black">
+      {/* Left side: Persona Details */}
+      <div className="w-1/2 flex flex-col p-8 border-r border-gray-200">
+        {/* Top Details Section - This will scroll if content overflows */}
+        <div className="flex-shrink-0 overflow-y-auto">
+          <div className="w-full max-w-md mx-auto">
+            <h2 className="text-sm font-semibold mb-4 text-gray-500">Your Generated Persona</h2>
+            
+            {/* Details */}
+            <h1 className="text-4xl font-bold">{persona.name}</h1>
+            <p className="text-lg text-gray-600 mt-1">{persona.age} years old</p>
+            <p className="text-lg text-gray-600">{persona.role} - {persona.experience}</p>
+            
+            <div className="mt-8 space-y-6 text-base">
+              <div>
+                <h3 className="font-bold mb-2 text-gray-800">Bio</h3>
+                <p className="text-gray-700 whitespace-pre-wrap">{persona.bio}</p>
+              </div>
+              <div>
+                <h3 className="font-bold mb-2 text-gray-800">Interests</h3>
+                <p className="text-gray-700">{persona.interests}</p>
+              </div>
+              <div>
+                <h3 className="font-bold mb-2 text-gray-800">Disinterests</h3>
+                <p className="text-gray-700">{persona.disinterests}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Spacer */}
+        <div className="flex-grow"></div>
+
+        {/* Bottom Image Section */}
+        <div className="flex-shrink-0 w-full max-w-md mx-auto">
           {persona.imageUrl ? (
             <Image
               src={persona.imageUrl}
@@ -130,7 +157,7 @@ const PersonaChat: React.FC<PersonaChatProps> = ({ persona, onEdit }) => {
             />
           ) : (
             <div className="w-full aspect-square bg-gray-200 rounded-lg flex items-center justify-center">
-              <span className="text-gray-500">No Image Available</span>
+              <span className="text-gray-500">Image Generation Failed</span>
             </div>
           )}
         </div>

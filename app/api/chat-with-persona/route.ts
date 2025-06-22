@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
     // Add the new message to the history for the prompt
     const currentChatHistory = [...chatHistory, { role: 'user', content: message } as ChatMessage];
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
     const systemPrompt = getSystemPrompt(persona, currentChatHistory);
     
     const result = await model.generateContent(systemPrompt);
