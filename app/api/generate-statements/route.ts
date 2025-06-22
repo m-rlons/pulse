@@ -1,6 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { Bento } from '../../../lib/types';
+import { Bento, Statement } from '../../../lib/types';
+import { v4 as uuidv4 } from 'uuid';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
@@ -101,36 +102,80 @@ Return nothing but the JSON block.
 `;
 };
 
+async function generateImageForStatement(text: string): Promise<string | null> {
+    try {
+        const imagePrompt = `a vibrant, abstract, simple graphic representing the concept: "${text}". Use a modern, minimalist style.`;
+        const imageModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash-preview-0514" });
+        const result = await imageModel.generateContent([imagePrompt]);
+        const response = await result.response;
+        // This part is tricky. Assuming the model can return image data directly
+        // or provides it in a specific format. For this example, let's assume
+        // it's in a part that can be converted to base64. This may need adjustment
+        // based on actual API response for image generation.
+        // A more robust solution would inspect `response.candidates[0].content.parts`.
+        const firstPart = response.candidates?.[0]?.content?.parts?.[0];
+        if (firstPart && 'inlineData' in firstPart && firstPart.inlineData) {
+             return `data:${firstPart.inlineData.mimeType};base64,${Buffer.from(firstPart.inlineData.data).toString('base64')}`;
+        }
+        return null;
+    } catch (error) {
+        console.error(`[generate-statements] Failed to generate image for "${text}"`, error);
+        return null;
+    }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { bento, refinementDimension } = await req.json();
-
     if (!bento) {
-      return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+      return new Response(JSON.stringify({ error: 'Invalid input' }), { status: 400 });
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    // 1. Generate text statements first
+    const textModel = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
     const systemPrompt = getSystemPrompt(bento, refinementDimension);
-
-    const result = await model.generateContent(systemPrompt);
+    const result = await textModel.generateContent(systemPrompt);
     const response = await result.response;
-    const text = response.text();
-
-    const cleanedText = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const cleanedText = response.text().replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     let parsedJson = JSON.parse(cleanedText);
 
-    // If we are in the default case, the structure is different.
-    // We need to transform it for the frontend.
+    let statements: Statement[] = [];
     if (!refinementDimension && parsedJson.statements) {
-      const transformedStatements = Object.entries(parsedJson.statements).flatMap(([dimension, statements]) =>
-        (statements as string[]).map(text => ({ dimension, text }))
+      statements = Object.entries(parsedJson.statements).flatMap(([dimension, stmts]) =>
+        (stmts as string[]).map(text => ({ id: uuidv4(), dimension, text }))
       );
-      parsedJson = { statements: transformedStatements };
+    } else if (refinementDimension && parsedJson.statements) {
+      statements = parsedJson.statements.map((s: { dimension: string, text: string }) => ({ ...s, id: uuidv4(), text: s.text, dimension: s.dimension }));
     }
 
-    return NextResponse.json(parsedJson);
+    // 2. Create and return a stream
+    const stream = new ReadableStream({
+      async start(controller) {
+        const enqueue = (data: any) => controller.enqueue(new TextEncoder().encode(JSON.stringify(data) + '\n'));
+        
+        // 3. Immediately send the statement text
+        enqueue({ type: 'statements', data: statements });
+
+        // 4. Generate and stream images for each statement
+        for (const statement of statements) {
+          if (statement.text) {
+            const imageUrl = await generateImageForStatement(statement.text);
+            if (imageUrl) {
+              enqueue({ type: 'image_update', data: { id: statement.id, imageUrl } });
+            }
+          }
+        }
+
+        controller.close();
+      }
+    });
+
+    return new Response(stream, {
+      headers: { 'Content-Type': 'application/json' },
+    });
+
   } catch (err: any) {
     console.error('[generate-statements] CATCH BLOCK ERROR:', err);
-    return NextResponse.json({ error: 'Server error', details: err.message }, { status: 500 });
+    return new Response(JSON.stringify({ error: 'Server error', details: err.message }), { status: 500 });
   }
 } 

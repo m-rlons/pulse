@@ -144,8 +144,16 @@ export const SwipeInterface: React.FC<SwipeInterfaceProps> = ({ statements, onAs
               whileDrag={{ scale: 1.05 }}
               style={{ touchAction: 'none', cursor: 'grab' }}
             >
-              <div className={`relative w-80 h-96 rounded-3xl p-8 text-white ${gradients[currentIndex % gradients.length]} shadow-2xl flex items-center justify-center`}>
-                <p className="text-3xl font-bold text-center lowercase leading-tight">
+              <div className={`relative w-80 h-96 rounded-3xl p-8 text-white ${!statements[currentIndex].imageUrl && gradients[currentIndex % gradients.length]} shadow-2xl flex items-center justify-center overflow-hidden`}>
+                {statements[currentIndex].imageUrl ? (
+                  <>
+                    <img src={statements[currentIndex].imageUrl} alt="Statement context" className="absolute top-0 left-0 w-full h-full object-cover" />
+                    <div className="absolute top-0 left-0 w-full h-full bg-black bg-opacity-40"></div>
+                  </>
+                ) : (
+                  <div className="absolute top-0 left-0 w-full h-full border-2 border-dashed border-gray-300 rounded-3xl animate-pulse"></div>
+                )}
+                <p className="relative z-10 text-3xl font-bold text-center lowercase leading-tight">
                   {statements[currentIndex].text}
                 </p>
               </div>

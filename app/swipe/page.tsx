@@ -40,20 +40,48 @@ function SwipePageContent() {
           body: JSON.stringify({ bento: parsedBento, refinementDimension }),
         });
 
-        if (!response.ok) {
+        if (!response.ok || !response.body) {
           const errorData = await response.json();
           throw new Error(errorData.error || 'Failed to fetch statements');
         }
         
-        const data = await response.json();
-        const shuffledStatements = data.statements.sort(() => Math.random() - 0.5);
-        setStatements(shuffledStatements);
-        
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || ''; // Keep the last, possibly incomplete, line
+
+          for (const line of lines) {
+            if (line.trim() === '') continue;
+            try {
+              const parsed = JSON.parse(line);
+              if (parsed.type === 'statements') {
+                const shuffledStatements = parsed.data.sort(() => Math.random() - 0.5);
+                setStatements(shuffledStatements);
+                setIsFetchingStatements(false); // Show UI as soon as text is ready
+              } else if (parsed.type === 'image_update') {
+                setStatements(prevStatements => 
+                  prevStatements.map(s => 
+                    s.id === parsed.data.id ? { ...s, imageUrl: parsed.data.imageUrl } : s
+                  )
+                );
+              }
+            } catch (e) {
+              console.warn("Failed to parse stream chunk:", line, e);
+            }
+          }
+        }
+
       } catch (err: any) {
         setError(err.message || 'An unknown error occurred.');
-      } finally {
         setIsFetchingStatements(false);
-      }
+      } 
     };
 
     fetchStatements();
