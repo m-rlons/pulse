@@ -31,4 +31,11 @@
 # Logs
 npm-debug.log*
 yarn-debug.log*
-yarn-error.log* 
+yarn-error.log*
+
+# User-uploaded files
+uploads/
+
+# Typescript
+*.tsbuildinfo
+next-env.d.ts 

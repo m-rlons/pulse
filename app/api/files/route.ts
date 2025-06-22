@@ -1,0 +1,48 @@
+import { NextResponse } from 'next/server';
+import { readdir, stat } from 'fs/promises';
+import { join } from 'path';
+
+const UPLOAD_DIR = join(process.cwd(), 'uploads');
+
+type FileData = {
+  name: string;
+  size: number;
+  lastModified: Date;
+};
+
+export async function GET() {
+  try {
+    const filenames = await readdir(UPLOAD_DIR);
+    const files: FileData[] = [];
+
+    for (const filename of filenames) {
+      // Skip system files like .DS_Store
+      if (filename.startsWith('.')) {
+        continue;
+      }
+      
+      const filePath = join(UPLOAD_DIR, filename);
+      const stats = await stat(filePath);
+      files.push({
+        name: filename,
+        size: stats.size,
+        lastModified: stats.mtime,
+      });
+    }
+
+    // Sort files by most recently modified
+    files.sort((a, b) => b.lastModified.getTime() - a.lastModified.getTime());
+
+    return NextResponse.json({ success: true, files });
+
+  } catch (error) {
+    // If the directory doesn't exist, return an empty array.
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+        return NextResponse.json({ success: true, files: [] });
+    }
+    
+    console.error('Failed to list files:', error);
+    const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
+    return NextResponse.json({ success: false, error: `Failed to list files: ${errorMessage}` }, { status: 500 });
+  }
+} 

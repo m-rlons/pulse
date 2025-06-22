@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Persona, ChatMessage } from '../../../lib/types';
+import { readFile } from 'fs/promises';
+import { join } from 'path';
 
+const UPLOAD_DIR = join(process.cwd(), 'uploads');
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-const getSystemPrompt = (persona: Persona, chatHistory: ChatMessage[]) => `
+const getSystemPrompt = (persona: Persona, chatHistory: ChatMessage[], documentContent?: string) => `
 # Persona & Context
 You are roleplaying as **${persona.name}**. Your characteristics are:
 - **Role:** ${persona.role} (${persona.experience} experience)
@@ -13,7 +16,14 @@ You are roleplaying as **${persona.name}**. Your characteristics are:
 - **Disinterests:** ${persona.disinterests}
 - **Core Motivations (Private):** ${persona.insights}
 
-The user is a business owner trying to understand you. The conversation so far:
+${documentContent ?
+`# Attached Document
+The user has attached the following document. Use its content to provide an informed and accurate response. Do not mention the document unless the user does.
+---
+${documentContent}
+---` : ''}
+
+The conversation so far:
 ${chatHistory.map(m => `${m.role === 'user' ? 'User' : persona.name}: ${m.content}`).join('\n')}
 
 # Task
@@ -42,21 +52,37 @@ Provide only the JSON object.
 
 export async function POST(req: NextRequest) {
   try {
-    const { message, persona, chatHistory } = (await req.json()) as {
+    const { message, persona, chatHistory, document } = (await req.json()) as {
       message: string;
       persona: Persona;
       chatHistory: ChatMessage[];
+      document?: string;
     };
 
     if (!message || !persona || !Array.isArray(chatHistory)) {
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
     
+    let documentContent: string | undefined = undefined;
+    if (document) {
+        try {
+            const filePath = join(UPLOAD_DIR, document);
+            // Basic security: prevent path traversal
+            if (!filePath.startsWith(UPLOAD_DIR)) {
+              throw new Error('Invalid file path');
+            }
+            documentContent = await readFile(filePath, 'utf-8');
+        } catch (e) {
+            console.error(`Failed to read document ${document}:`, e);
+            // Proceed without document, but could also return an error
+        }
+    }
+    
     // Add the new message to the history for the prompt
     const currentChatHistory = [...chatHistory, { role: 'user', content: message } as ChatMessage];
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-    const systemPrompt = getSystemPrompt(persona, currentChatHistory);
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const systemPrompt = getSystemPrompt(persona, currentChatHistory, documentContent);
     
     const result = await model.generateContent(systemPrompt);
     const response = await result.response;

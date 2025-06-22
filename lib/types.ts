@@ -53,4 +53,10 @@ export interface AssessmentResult {
 export interface ChatMessage {
   role: 'user' | 'persona';
   content: string;
+}
+
+export type Document = {
+  name:string;
+  size: number;
+  lastModified: string;
 } 

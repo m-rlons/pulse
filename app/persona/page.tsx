@@ -4,8 +4,8 @@ import React, { useState, useEffect, Suspense, useRef } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { motion } from 'framer-motion';
-import { Persona, ChatMessage, AssessmentResult, Statement } from '../../lib/types';
-import { Loader, Edit, Send, MessageSquare, FileText, BarChart2 } from 'lucide-react';
+import { Persona, ChatMessage, AssessmentResult, Statement, Document } from '../../lib/types';
+import { Loader, Edit, Send, MessageSquare, FileText, BarChart2, Paperclip, X } from 'lucide-react';
 
 const DIMENSIONS = ["spend", "loyalty", "investment", "interest", "social", "novelty"];
 
@@ -20,6 +20,8 @@ function PersonaPageContent() {
   const [view, setView] = useState<'chat' | 'bio' | 'data'>('chat');
   const [assessmentResults, setAssessmentResults] = useState<AssessmentResult[]>([]);
   const [allStatements, setAllStatements] = useState<Statement[]>([]);
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [selectedDocument, setSelectedDocument] = useState<string | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -61,6 +63,21 @@ function PersonaPageContent() {
       setIsLoading(false);
     }
   }, []);
+
+  useEffect(() => {
+    async function fetchDocuments() {
+      try {
+        const response = await fetch('/api/files');
+        const data = await response.json();
+        if (data.success) {
+          setDocuments(data.files);
+        }
+      } catch (e) {
+        console.error("Failed to fetch documents for chat:", e);
+      }
+    }
+    fetchDocuments();
+  }, []);
   
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,6 +97,7 @@ function PersonaPageContent() {
           persona,
           chatHistory: messages,
           message: input,
+          document: selectedDocument,
         }),
       });
 
@@ -147,6 +165,32 @@ function PersonaPageContent() {
         <div ref={messagesEndRef} />
       </div>
       <div className="p-4">
+        {documents.length > 0 && (
+          <div className="mb-2">
+            {selectedDocument ? (
+              <div className="flex items-center justify-between p-2 text-sm bg-violet-100 text-violet-800 rounded-md">
+                <div className="flex items-center gap-2">
+                  <Paperclip size={14} />
+                  <span className="font-medium">{selectedDocument}</span>
+                </div>
+                <button onClick={() => setSelectedDocument(null)} className="p-1 rounded-full hover:bg-violet-200">
+                  <X size={16} />
+                </button>
+              </div>
+            ) : (
+              <select
+                onChange={(e) => setSelectedDocument(e.target.value || null)}
+                className="w-full p-2 text-sm text-gray-500 bg-gray-50 rounded-md border-gray-200 focus:outline-none focus:ring-1 focus:ring-black"
+                value=""
+              >
+                <option value="">Attach a document...</option>
+                {documents.map((doc) => (
+                  <option key={doc.name} value={doc.name}>{doc.name}</option>
+                ))}
+              </select>
+            )}
+          </div>
+        )}
         <form onSubmit={handleSend} className="relative">
           <input
             type="text"
