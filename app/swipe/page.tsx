@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Bento, Statement, AssessmentResult, Persona } from '../../lib/types';
 import { SwipeInterface } from '../../components/SwipeInterface';
@@ -14,6 +14,7 @@ function SwipePageContent() {
   const [error, setError] = useState<string | null>(null);
   const [personaGenerationPromise, setPersonaGenerationPromise] = useState<Promise<void> | null>(null);
   const [isContinuing, setIsContinuing] = useState(false);
+  const hasStartedPersonaGeneration = useRef(false);
   
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -63,7 +64,10 @@ function SwipePageContent() {
     router.push('/');
   };
 
-  const handleAssessmentComplete = (results: AssessmentResult[]) => {
+  const handleAssessmentComplete = useCallback((results: AssessmentResult[]) => {
+    if (hasStartedPersonaGeneration.current) return;
+    hasStartedPersonaGeneration.current = true;
+
     const generateAndSavePersona = async () => {
       let allResults = results;
       if (refinementDimension) {
@@ -93,7 +97,7 @@ function SwipePageContent() {
     };
     
     setPersonaGenerationPromise(generateAndSavePersona());
-  };
+  }, [bento, refinementDimension]);
 
   const handleContinue = async () => {
     setIsContinuing(true);
