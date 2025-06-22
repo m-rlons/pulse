@@ -15,6 +15,7 @@ function PersonaPageContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [view, setView] = useState<'chat' | 'bio'>('chat');
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -106,70 +107,104 @@ function PersonaPageContent() {
   
   if (!persona) return null; // Should be handled by loading/error states
 
+  const ChatPanel = () => (
+    <div className="w-full h-full flex flex-col">
+      <div className="flex-1 overflow-y-auto p-4 md:p-8 space-y-4">
+        {messages.map((msg, index) => (
+          <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
+            {msg.role === 'persona' && (
+              <div className="w-8 h-8 rounded-full bg-gray-300 flex-shrink-0" />
+            )}
+            <div className={`max-w-md p-4 rounded-2xl ${ msg.role === 'persona' ? 'bg-black text-white' : 'bg-gray-100 text-black' }`}>
+              <p>{msg.content}</p>
+            </div>
+          </div>
+        ))}
+        {isLoading && (
+           <div className="flex items-start gap-3">
+              <div className="w-8 h-8 rounded-full bg-gray-300 flex-shrink-0" />
+              <div className="max-w-md p-4 rounded-2xl bg-black text-white">
+                  <Loader className="animate-spin" size={20} />
+              </div>
+           </div>
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+      <div className="p-4">
+        <form onSubmit={handleSend} className="relative">
+          <input
+            type="text"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            placeholder={`what do you do, ${persona.name}?`}
+            className="w-full p-4 pr-12 text-black bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-black"
+            disabled={isLoading}
+          />
+          <button type="submit" className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black disabled:opacity-50" disabled={isLoading || !input.trim()}>
+            <Send size={20} />
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+
+  const BioPanel = () => (
+    <div className="p-8 h-full overflow-y-auto">
+        <h1 className="text-4xl font-bold">{persona.name}</h1>
+        <p className="text-lg text-gray-300 mt-1">{persona.age} years old</p>
+        <p className="text-lg text-gray-300">{persona.role} - {persona.experience}</p>
+        
+        <div className="mt-8 space-y-6 text-base text-gray-200">
+          <div>
+            <h3 className="font-bold mb-2 text-white">Bio</h3>
+            <p className="whitespace-pre-wrap">{persona.bio}</p>
+          </div>
+          <div>
+            <h3 className="font-bold mb-2 text-white">Interests</h3>
+            <p>{persona.interests}</p>
+          </div>
+          <div>
+            <h3 className="font-bold mb-2 text-white">Disinterests</h3>
+            <p>{persona.disinterests}</p>
+          </div>
+        </div>
+    </div>
+  );
+
   return (
-    <div className="h-screen w-full bg-white text-black overflow-hidden flex">
-      {/* Left side: Persona Image */}
-      <div className="w-1/2 h-full relative z-10">
+    <div className="h-screen w-full bg-black md:bg-white text-black overflow-hidden md:flex">
+      {/* Background Image (Mobile) & Left Panel (Desktop) */}
+      <div className="absolute inset-0 md:relative md:w-1/2 h-full md:z-10">
         <Image
             src={persona.imageUrl!}
             alt={persona.name}
             fill
-            className="object-contain object-bottom"
+            className="object-cover object-center md:object-contain md:object-bottom"
             priority
         />
-        <button
-            onClick={() => router.push('/')} // Let's just have it go home for now
-            className="absolute top-8 left-8 flex items-center gap-2 text-sm font-semibold z-10 bg-white/50 backdrop-blur-sm px-3 py-2 rounded-lg"
-        >
+        {/* Mobile View Toggle */}
+        <div className="md:hidden absolute top-8 left-8 z-20">
+          <button onClick={() => setView(view === 'chat' ? 'bio' : 'chat')} className="flex items-center gap-2 text-sm font-semibold bg-black/50 text-white backdrop-blur-sm px-3 py-2 rounded-lg">
+              <Edit size={16} />
+              {view === 'chat' ? 'View Bio' : 'View Chat'}
+          </button>
+        </div>
+         {/* Desktop Edit Button */}
+         <button onClick={() => router.push('/')} className="hidden md:flex absolute top-8 left-8 items-center gap-2 text-sm font-semibold z-10 bg-white/50 backdrop-blur-sm px-3 py-2 rounded-lg">
             <Edit size={16} />
             Edit Persona
         </button>
       </div>
 
-      {/* Right side: Chat */}
-      <div className="w-1/2 h-full flex flex-col">
-        <div className="flex-1 overflow-y-auto p-8 space-y-4">
-          {messages.map((msg, index) => (
-            <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
-              {msg.role === 'persona' && (
-                <div className="w-8 h-8 rounded-full bg-gray-300 flex-shrink-0" />
-              )}
-              <div className={`max-w-md p-4 rounded-2xl ${ msg.role === 'persona' ? 'bg-black text-white' : 'bg-gray-100 text-black' }`}>
-                <p>{msg.content}</p>
-              </div>
-            </div>
-          ))}
-          
-          {isLoading && (
-             <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-gray-300 flex-shrink-0" />
-                <div className="max-w-md p-4 rounded-2xl bg-black text-white">
-                    <Loader className="animate-spin" size={20} />
-                </div>
-             </div>
-          )}
-          <div ref={messagesEndRef} />
+      {/* Right side Panels (Desktop) / Overlay Panels (Mobile) */}
+      <div className="md:w-1/2 h-full flex flex-col">
+        {/* Mobile View */}
+        <div className="md:hidden absolute inset-0 z-10 bg-black/30 backdrop-blur-md overflow-y-auto">
+          {view === 'chat' ? <ChatPanel /> : <BioPanel />}
         </div>
-
-        {/* Input Form - No border-t here */}
-        <div className="p-4">
-          <form onSubmit={handleSend} className="relative">
-            <input
-              type="text"
-              value={input}
-              onChange={e => setInput(e.target.value)}
-              placeholder={`what do you do, ${persona.name}?`}
-              className="w-full p-4 pr-12 text-black bg-gray-100 rounded-full focus:outline-none focus:ring-2 focus:ring-black"
-              disabled={isLoading}
-            />
-            <button
-              type="submit"
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-black disabled:opacity-50"
-              disabled={isLoading || !input.trim()}
-            >
-              <Send size={20} />
-            </button>
-          </form>
+        {/* Desktop View */}
+        <div className="hidden md:flex w-full h-full">
+           <ChatPanel />
         </div>
       </div>
     </div>
