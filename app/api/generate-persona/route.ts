@@ -13,7 +13,7 @@ BUSINESS CONTEXT
 - Product/Service: ${bento.productService}
 - Positioning: ${bento.positioning}
 - Why We Exist: ${bento.whyWeExist}
-- Competitors: ${bento.competitors.join(', ')}
+- Competitors: ${bento.competitors.map(c => c.name).join(', ')}
 
 ASSESSMENT RESULTS
 ${results.map(r => `- ${r.dimension}: ${r.score === 1 ? 'agree' : r.score === 0 ? 'neutral' : 'disagree'}`).join('\n')}

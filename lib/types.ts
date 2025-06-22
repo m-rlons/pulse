@@ -18,7 +18,7 @@ export interface Bento {
   productService: string;
   positioning: string;
   whyWeExist: string;
-  competitors: string[];
+  competitors: { name: string; domain: string }[];
   timestamp: number;
 }
 
