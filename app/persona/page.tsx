@@ -37,24 +37,20 @@ function PersonaPageContent() {
             setIsLoading(false);
         }
     }, [personaId]);
-    
-    // --- Animation Variants ---
-    const transition = { duration: 0.7, ease: "easeInOut" };
 
-    const personaVariants = {
-        bio: { x: "50%", y: "0%", scale: 1, opacity: 1 },
-        chat: { x: "-50%", y: "0%", scale: 1, opacity: 1 },
-        workspace: { x: "0%", y: "50%", scale: 0.4, opacity: 1 }
+    const transition = { duration: 1.2, ease: [0.76, 0, 0.24, 1] };
+
+    // Canvas slide variants
+    const canvasVariants = {
+        bio: { x: '0vw' },
+        chat: { x: '-66.66vw' },
+        workspace: { x: '-66.66vw' },
     };
-
-    // Add a placeholder image component
-    const PersonaImagePlaceholder = ({ name }: { name: string }) => (
-        <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-            <div className="text-6xl font-bold text-gray-300">
-                {name.charAt(0)}
-            </div>
-        </div>
-    );
+    // For vertical slide in the rightmost column
+    const column3Variants = {
+        chat: { y: '-100vh' },
+        workspace: { y: '0vh' },
+    };
 
     if (isLoading) {
         return <div className="min-h-screen w-full flex items-center justify-center bg-white"><Loader className="animate-spin text-gray-400" /></div>;
@@ -70,9 +66,53 @@ function PersonaPageContent() {
         );
     }
 
+    // Sliding Canvas: 2/3 + 1/3 + 2/3 = 166.66vw
     return (
-        <div className="min-h-screen w-full bg-white text-black relative">
-            {/* --- Static Staff Directory Link --- */}
+        <div className="min-h-screen w-full bg-white text-black relative overflow-hidden">
+            <motion.div
+                className="w-[166.66vw] h-screen flex absolute top-0 left-0"
+                variants={{
+                    bio: { x: '0vw' },
+                    chat: { x: '-66.66vw' },
+                    workspace: { x: '-66.66vw' },
+                }}
+                animate={view}
+                transition={{ duration: 1.2, ease: [0.76, 0, 0.24, 1] }}
+            >
+                {/* Column 1: Bio (2/3 width) */}
+                <div className="w-[66.66vw] h-screen flex justify-end items-center p-16">
+                    <BioView persona={persona} />
+                </div>
+                {/* Column 2: Persona (1/3 width) */}
+                <div className="w-[33.34vw] h-screen flex justify-center items-end">
+                    {persona.imageUrl && (
+                        <Image 
+                            src={persona.imageUrl} 
+                            alt={persona.name} 
+                            width={600} height={900}
+                            className="h-[90vh] w-full object-contain object-bottom"
+                            priority 
+                        />
+                    )}
+                </div>
+                {/* Column 3: Interactive (2/3 width) */}
+                <div className="w-[66.66vw] h-screen relative overflow-hidden">
+                    <motion.div
+                        className="w-full h-[200vh] absolute top-0 left-0"
+                        variants={{
+                            chat: { y: '-100vh' },
+                            workspace: { y: '0vh' },
+                        }}
+                        animate={view === 'workspace' ? 'workspace' : 'chat'}
+                        transition={{ duration: 1.2, ease: [0.76, 0, 0.24, 1] }}
+                    >
+                        <div className="w-full h-screen flex items-center"><WorkspaceView persona={persona} /></div>
+                        <div className="w-full h-screen flex items-center"><ChatView persona={persona} /></div>
+                    </motion.div>
+                </div>
+            </motion.div>
+
+            {/* Static Staff Directory Link */}
             <div className="fixed top-8 left-8 z-30">
                 <Link href="/staff" className="flex items-center gap-2 text-sm font-semibold bg-gray-100/80 backdrop-blur-md px-4 py-2 rounded-full hover:bg-gray-200/80 transition-colors border border-gray-200">
                     <ArrowLeft size={16} />
@@ -80,59 +120,14 @@ function PersonaPageContent() {
                 </Link>
             </div>
 
-            {/* --- Animated Content Panes --- */}
-            <AnimatePresence mode="wait">
-                <motion.div
-                    key={view}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="absolute inset-0 z-10 flex"
-                >
-                    {view === 'bio' && <BioView persona={persona} />}
-                    {view === 'chat' && <ChatView persona={persona} />}
-                    {view === 'workspace' && <WorkspaceView persona={persona} />}
-                </motion.div>
-            </AnimatePresence>
-
-            {/* --- Persona Anchor & Navigation --- */}
-            <motion.div
-                className="absolute w-1/2 h-full top-0 left-0 z-20"
-                variants={personaVariants}
-                animate={view}
-                transition={transition}
-                style={{ 
-                    originX: '50%',
-                    originY: view === 'workspace' ? '100%' : '50%'
-                }}
-            >
-                <div className="relative w-full h-full">
-                    {persona.imageUrl && (
-                        <Image 
-                            src={persona.imageUrl} 
-                            alt={persona.name} 
-                            layout="fill" 
-                            className="object-cover"
-                            priority 
-                        />
-                    )}
-                </div>
-            </motion.div>
-
-            {/* --- Navigation --- */}
-            <motion.div 
-                className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-30"
-                initial={{opacity: 0}}
-                animate={{opacity: 1}}
-                transition={{delay: 0.3}}
-            >
+            {/* Navigation Controls */}
+            <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-30">
                 <div className="flex items-center gap-2 p-1.5 bg-gray-200/80 backdrop-blur-lg rounded-full shadow-lg border border-gray-300">
-                    {view !== 'bio' && <button onClick={() => setView('bio')} className="px-5 py-2 rounded-full text-sm font-medium hover:bg-gray-50 transition-colors bg-white text-black">Bio</button>}
-                    {view !== 'chat' && <button onClick={() => setView('chat')} className="px-5 py-2 rounded-full text-sm font-medium hover:bg-gray-50 transition-colors bg-white text-black">Chat</button>}
-                    {view !== 'workspace' && <button onClick={() => setView('workspace')} className="px-5 py-2 rounded-full text-sm font-medium hover:bg-gray-50 transition-colors bg-white text-black">Workspace</button>}
+                    {(['bio', 'chat', 'workspace'] as const).map(v => (
+                        v !== view && <button key={v} onClick={() => setView(v)} className="px-5 py-2 rounded-full text-sm font-medium hover:bg-gray-50 transition-colors bg-white text-black">{v.charAt(0).toUpperCase() + v.slice(1)}</button>
+                    ))}
                 </div>
-            </motion.div>
+            </div>
         </div>
     );
 }
