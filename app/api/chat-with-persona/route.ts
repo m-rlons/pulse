@@ -1,66 +1,84 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { Persona, ChatMessage } from '../../../lib/types';
-import { readFile } from 'fs/promises';
+import { readdir, readFile } from 'fs/promises';
 import { join } from 'path';
 
-const UPLOAD_DIR = join(process.cwd(), 'uploads');
+const UPLOADS_ROOT_DIR = join(process.cwd(), 'uploads');
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-const getSystemPrompt = (persona: Persona, chatHistory: ChatMessage[], documentContent?: string) => `
-You are roleplaying as **${persona.name}**. 
+const getSystemPrompt = (persona: Persona, documentContent?: string) => `You are roleplaying as **${persona.name}**. 
 Your characteristics are:
 - Role: ${persona.role} (${persona.experience} experience)
 - Bio: ${persona.bio}
 - Interests: ${persona.interests}
 - Disinterests: ${persona.disinterests}
+- Your core directive is to use your persona and the provided business context to answer user questions.
 
 ${documentContent ?
-`The user has attached the following document. Use its content to provide an informed and accurate response.
+`The user has uploaded the following documents as business context. Use their content to provide informed and accurate responses to the user's questions. Synthesize information from these documents when necessary.
 ---
 ${documentContent}
 ---` : ''}
 
-The conversation so far:
-${chatHistory.map(m => `${m.role === 'user' ? 'User' : persona.name}: ${m.content}`).join('\n')}
-
-Your task is to provide a natural, in-character response to the user's last message. Do not add any extra formatting, labels, or JSON. Just the response text.
+Your task is to provide a natural, in-character response to the user's message. Do not add any extra formatting, labels, or JSON. Just the response text.
 `;
 
 
 export async function POST(req: NextRequest) {
   try {
-    const { message, persona, chatHistory, document } = (await req.json()) as {
-      message: string;
+    const { persona, chatHistory } = (await req.json()) as {
       persona: Persona;
       chatHistory: ChatMessage[];
-      document?: string;
     };
 
-    if (!message || !persona || !Array.isArray(chatHistory)) {
+    if (!persona || !Array.isArray(chatHistory)) {
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
 
     let documentContent: string | undefined = undefined;
-    if (document) {
+    if (persona.id) {
+        const personaUploadDir = join(UPLOADS_ROOT_DIR, persona.id);
         try {
-            const filePath = join(UPLOAD_DIR, document);
-            if (!filePath.startsWith(UPLOAD_DIR)) {
-              throw new Error('Invalid file path');
+            const filenames = await readdir(personaUploadDir);
+            const fileContents = await Promise.all(
+                filenames
+                    .filter(name => !name.startsWith('.')) // Exclude hidden files
+                    .map(name => readFile(join(personaUploadDir, name), 'utf-8'))
+            );
+            
+            if (fileContents.length > 0) {
+                documentContent = fileContents.join('\n\n---\n\n');
             }
-            documentContent = await readFile(filePath, 'utf-8');
+
         } catch (e) {
-            console.error(`Failed to read document ${document}:`, e);
+            // It's okay if the directory doesn't exist, just means no documents.
+            if (e && typeof e === 'object' && 'code' in e && e.code !== 'ENOENT') {
+                 console.error(`Failed to read documents for persona ${persona.id}:`, e);
+            }
         }
     }
     
-    const currentChatHistory = [...chatHistory, { role: 'user', content: message } as ChatMessage];
-
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-pro' });
-    const systemPrompt = getSystemPrompt(persona, currentChatHistory, documentContent);
+    const model = genAI.getGenerativeModel({ 
+        model: 'gemini-2.5-pro',
+        systemInstruction: getSystemPrompt(persona, documentContent),
+    });
     
-    const result = await model.generateContentStream([systemPrompt]);
-
+    // The last message from the user is the one we need to respond to.
+    const latestUserMessage = chatHistory.pop();
+    if (!latestUserMessage || latestUserMessage.role !== 'user') {
+        // This case should not happen in normal flow
+        return NextResponse.json({ error: 'No user message to respond to' }, { status: 400 });
+    }
+    
+    const history = chatHistory.map(m => ({
+        role: m.role === 'user' ? 'user' : 'model',
+        parts: [{ text: m.content }]
+    }));
+    
+    const chat = model.startChat({ history });
+    const result = await chat.sendMessageStream(latestUserMessage.content);
+    
     const stream = new ReadableStream({
       async start(controller) {
         for await (const chunk of result.stream) {

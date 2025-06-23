@@ -1,8 +1,8 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { readdir, stat } from 'fs/promises';
 import { join } from 'path';
 
-const UPLOAD_DIR = join(process.cwd(), 'uploads');
+const UPLOADS_ROOT_DIR = join(process.cwd(), 'uploads');
 
 type FileData = {
   name: string;
@@ -10,9 +10,17 @@ type FileData = {
   lastModified: Date;
 };
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const filenames = await readdir(UPLOAD_DIR);
+    const personaId = req.nextUrl.searchParams.get('personaId');
+
+    if (!personaId) {
+        return NextResponse.json({ success: false, error: 'No persona ID provided.' }, { status: 400 });
+    }
+
+    const personaUploadDir = join(UPLOADS_ROOT_DIR, personaId);
+
+    const filenames = await readdir(personaUploadDir);
     const files: FileData[] = [];
 
     for (const filename of filenames) {
@@ -21,7 +29,7 @@ export async function GET() {
         continue;
       }
       
-      const filePath = join(UPLOAD_DIR, filename);
+      const filePath = join(personaUploadDir, filename);
       const stats = await stat(filePath);
       files.push({
         name: filename,

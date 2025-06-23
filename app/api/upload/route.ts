@@ -3,26 +3,38 @@ import { writeFile } from 'fs/promises';
 import { join } from 'path';
 import { mkdirSync, existsSync } from 'fs';
 
-const UPLOAD_DIR = join(process.cwd(), 'uploads');
+const UPLOADS_ROOT_DIR = join(process.cwd(), 'uploads');
+
+// Ensure the root uploads directory exists on server start
+if (!existsSync(UPLOADS_ROOT_DIR)) {
+  mkdirSync(UPLOADS_ROOT_DIR, { recursive: true });
+}
 
 export async function POST(req: NextRequest) {
   try {
-    // Ensure the upload directory exists
-    if (!existsSync(UPLOAD_DIR)) {
-      mkdirSync(UPLOAD_DIR, { recursive: true });
-    }
-
     const data = await req.formData();
     const file: File | null = data.get('file') as unknown as File;
+    const personaId: string | null = data.get('personaId') as string | null;
 
     if (!file) {
       return NextResponse.json({ success: false, error: 'No file provided.' }, { status: 400 });
+    }
+    
+    if (!personaId) {
+        return NextResponse.json({ success: false, error: 'No persona ID provided.' }, { status: 400 });
+    }
+
+    const personaUploadDir = join(UPLOADS_ROOT_DIR, personaId);
+
+    // Ensure the persona-specific upload directory exists
+    if (!existsSync(personaUploadDir)) {
+      mkdirSync(personaUploadDir, { recursive: true });
     }
 
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    const filePath = join(UPLOAD_DIR, file.name);
+    const filePath = join(personaUploadDir, file.name);
 
     await writeFile(filePath, buffer);
 
