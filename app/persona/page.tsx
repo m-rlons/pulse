@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Persona } from '../../lib/types';
 import { Loader, ArrowLeft, Plus, Send, UploadCloud } from 'lucide-react';
 
@@ -14,6 +14,14 @@ function UnifiedPersonasArea() {
   const [view, setView] = useState<'bio' | 'chat' | 'workspace'>('bio');
   const [isLoading, setIsLoading] = useState(true);
   const [staffExpanded, setStaffExpanded] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const [chatMessages, setChatMessages] = useState([
+    // Initial greeting from persona
+    { role: 'persona', content: selectedPersona ? `I'm ${selectedPersona.name}, it's so nice to meet you.` : '' },
+    { role: 'persona', content: `I'm eager to get started.` },
+  ]);
+  const chatEndRef = useRef(null);
+  const [showOptions, setShowOptions] = useState(false);
 
   useEffect(() => {
     const personasData = localStorage.getItem('personas');
@@ -26,6 +34,60 @@ function UnifiedPersonasArea() {
     }
     setIsLoading(false);
   }, []);
+
+  // Scroll to bottom on new message
+  useEffect(() => {
+    if (chatEndRef.current) {
+      (chatEndRef.current as any).scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [chatMessages]);
+
+  // Reset chat when persona changes
+  useEffect(() => {
+    if (selectedPersona) {
+      setChatMessages([
+        { role: 'persona', content: `I'm ${selectedPersona.name}, it's so nice to meet you.` },
+        { role: 'persona', content: `I'm eager to get started.` },
+      ]);
+    }
+  }, [selectedPersona]);
+
+  // Send message handler (now accepts generateImage)
+  const sendMessage = async (opts?: { generateImage?: boolean }) => {
+    if (!chatInput.trim() || !selectedPersona) return;
+    const userMessage = { role: 'user', content: chatInput };
+    setChatMessages(prev => [...prev, userMessage]);
+    setChatInput('');
+    setShowOptions(false);
+    // Placeholder for API call
+    try {
+      const res = await fetch('/api/chat-with-persona', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          persona: selectedPersona,
+          chatHistory: [...chatMessages, userMessage],
+          generateImage: opts?.generateImage || false,
+        }),
+      });
+      if (res.ok) {
+        const reply = await res.text();
+        setChatMessages(prev => [...prev, { role: 'persona', content: reply }]);
+      } else {
+        setChatMessages(prev => [...prev, { role: 'persona', content: 'Sorry, something went wrong.' }]);
+      }
+    } catch {
+      setChatMessages(prev => [...prev, { role: 'persona', content: 'Sorry, something went wrong.' }]);
+    }
+  };
+
+  // Handle Enter key in chat input
+  const handleChatInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  };
 
   // Handler for opening staff directory
   const handleOpenStaffDirectory = () => {
@@ -272,28 +334,77 @@ function UnifiedPersonasArea() {
                   <h2 className="text-3xl font-bold mb-8">Chat</h2>
                   <div className="flex-1 overflow-y-auto">
                     <div className="space-y-4">
-                      <div className="flex justify-start">
-                        <div className="p-3 px-4 rounded-2xl bg-black text-white max-w-md">
-                          I'm {selectedPersona?.name}, it's so nice to meet you.
+                      {chatMessages.map((msg, idx) => (
+                        <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                          <div className={`p-3 px-4 rounded-2xl ${msg.role === 'user' ? 'bg-gray-200 text-black' : 'bg-black text-white'} max-w-md`}>
+                            {msg.content}
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex justify-start">
-                        <div className="p-3 px-4 rounded-2xl bg-black text-white max-w-md">
-                          I'm eager to get started.
-                        </div>
-                      </div>
+                      ))}
+                      <div ref={chatEndRef} />
                     </div>
                   </div>
                   <div className="mt-8">
-                    <div className="flex gap-4">
+                    <div className="flex gap-4 items-center relative">
                       <input
                         type="text"
                         placeholder="Type your message..."
-                        className="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black/10"
+                        className="flex-1 px-4 py-3 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-black/10"
+                        value={chatInput}
+                        onChange={e => setChatInput(e.target.value)}
+                        onKeyDown={handleChatInputKeyDown}
                       />
-                      <button className="px-6 py-3 bg-black text-white rounded-lg font-semibold flex items-center gap-2">
+                      <AnimatePresence>
+                        {showOptions ? (
+                          <motion.div
+                            key="options"
+                            initial={{ opacity: 0, x: 40 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: 40 }}
+                            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                            className="absolute right-24 flex flex-col gap-2 z-10"
+                          >
+                            <button
+                              className="rounded-full px-6 py-3 font-semibold text-lg flex items-center gap-2 bg-blue-100 text-black hover:bg-blue-200 transition-colors shadow"
+                              onClick={() => sendMessage()}
+                            >
+                              <span role="img" aria-label="document">📄</span> Create Document
+                            </button>
+                            <button
+                              className="rounded-full px-6 py-3 font-semibold text-lg flex items-center gap-2 bg-red-100 text-black hover:bg-red-200 transition-colors shadow"
+                              onClick={() => sendMessage({ generateImage: true })}
+                            >
+                              <span role="img" aria-label="image">📸</span> Create Image
+                            </button>
+                            <button
+                              className="rounded-full w-12 h-12 flex items-center justify-center bg-red-500 text-white text-2xl mt-2 shadow hover:bg-red-600 transition-colors"
+                              onClick={() => setShowOptions(false)}
+                            >
+                              ×
+                            </button>
+                          </motion.div>
+                        ) : (
+                          <motion.button
+                            key="plus"
+                            initial={{ scale: 0, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0, opacity: 0 }}
+                            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                            className="rounded-full w-12 h-12 flex items-center justify-center bg-yellow-400 text-white text-2xl shadow hover:bg-yellow-500 transition-colors"
+                            onClick={() => setShowOptions(true)}
+                            style={{ marginRight: '0.5rem' }}
+                          >
+                            +
+                          </motion.button>
+                        )}
+                      </AnimatePresence>
+                      <button
+                        className="px-6 py-3 bg-black text-white rounded-full font-semibold flex items-center gap-2"
+                        onClick={() => sendMessage()}
+                        disabled={!chatInput.trim()}
+                      >
                         <Send size={20} />
-                        Send
+                        <span className="sr-only">Send</span>
                       </button>
                     </div>
                   </div>
