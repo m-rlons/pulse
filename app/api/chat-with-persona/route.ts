@@ -27,9 +27,10 @@ Your task is to provide a natural, in-character response to the user's message. 
 
 export async function POST(req: NextRequest) {
   try {
-    const { persona, chatHistory } = (await req.json()) as {
+    const { persona, chatHistory, generateImage } = (await req.json()) as {
       persona: Persona;
       chatHistory: ChatMessage[];
+      generateImage?: boolean;
     };
 
     if (!persona || !Array.isArray(chatHistory)) {
@@ -59,8 +60,11 @@ export async function POST(req: NextRequest) {
         }
     }
     
+    const modelName = generateImage
+      ? 'gemini-2.0-flash-preview-image-generation'
+      : 'gemini-2.5-flash';
     const model = genAI.getGenerativeModel({ 
-        model: 'gemini-2.5-pro',
+        model: modelName,
         systemInstruction: getSystemPrompt(persona, documentContent),
     });
     

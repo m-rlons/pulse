@@ -52,14 +52,28 @@ function UnifiedPersonasArea() {
     }
   }, [selectedPersona]);
 
-  // Send message handler (now accepts generateImage)
-  const sendMessage = async (opts?: { generateImage?: boolean }) => {
+  // Replace sendMessage and plus button logic:
+  const insertModeEmoji = (emoji: string) => {
+    if (!chatInput.startsWith(emoji)) {
+      setChatInput(emoji + ' ' + chatInput.trim());
+    }
+    setShowOptions(false);
+  };
+
+  const parseModeFromInput = (input: string) => {
+    if (input.startsWith('📸')) return { generateImage: true };
+    if (input.startsWith('📄')) return { generateImage: false };
+    return { generateImage: false };
+  };
+
+  const sendMessage = async () => {
     if (!chatInput.trim() || !selectedPersona) return;
-    const userMessage = { role: 'user', content: chatInput };
+    const opts = parseModeFromInput(chatInput);
+    const cleanInput = chatInput.replace(/^([📸📄])\s*/, '');
+    const userMessage = { role: 'user', content: cleanInput };
     setChatMessages(prev => [...prev, userMessage]);
     setChatInput('');
     setShowOptions(false);
-    // Placeholder for API call
     try {
       const res = await fetch('/api/chat-with-persona', {
         method: 'POST',
@@ -67,7 +81,7 @@ function UnifiedPersonasArea() {
         body: JSON.stringify({
           persona: selectedPersona,
           chatHistory: [...chatMessages, userMessage],
-          generateImage: opts?.generateImage || false,
+          generateImage: opts.generateImage,
         }),
       });
       if (res.ok) {
@@ -353,37 +367,35 @@ function UnifiedPersonasArea() {
                         value={chatInput}
                         onChange={e => setChatInput(e.target.value)}
                         onKeyDown={handleChatInputKeyDown}
+                        style={{ paddingLeft: chatInput.startsWith('📸') || chatInput.startsWith('📄') ? '2.5rem' : undefined }}
                       />
                       <AnimatePresence>
                         {showOptions ? (
                           <motion.div
                             key="options"
-                            initial={{ opacity: 0, x: 40 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: 40 }}
+                            initial={{ opacity: 0, x: 0 }}
+                            animate={{ opacity: 1, x: -120 }}
+                            exit={{ opacity: 0, x: 0 }}
                             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                             className="absolute right-24 flex flex-col gap-2 z-10"
                           >
                             <button
                               className="rounded-full px-6 py-3 font-semibold text-lg flex items-center gap-2 bg-blue-100 text-black hover:bg-blue-200 transition-colors shadow"
-                              onClick={() => sendMessage()}
+                              onClick={() => insertModeEmoji('📄')}
                             >
                               <span role="img" aria-label="document">📄</span> Create Document
                             </button>
                             <button
                               className="rounded-full px-6 py-3 font-semibold text-lg flex items-center gap-2 bg-red-100 text-black hover:bg-red-200 transition-colors shadow"
-                              onClick={() => sendMessage({ generateImage: true })}
+                              onClick={() => insertModeEmoji('📸')}
                             >
                               <span role="img" aria-label="image">📸</span> Create Image
                             </button>
-                            <button
-                              className="rounded-full w-12 h-12 flex items-center justify-center bg-red-500 text-white text-2xl mt-2 shadow hover:bg-red-600 transition-colors"
-                              onClick={() => setShowOptions(false)}
-                            >
-                              ×
-                            </button>
                           </motion.div>
-                        ) : (
+                        ) : null}
+                      </AnimatePresence>
+                      <AnimatePresence>
+                        {!showOptions ? (
                           <motion.button
                             key="plus"
                             initial={{ scale: 0, opacity: 0 }}
@@ -396,11 +408,24 @@ function UnifiedPersonasArea() {
                           >
                             +
                           </motion.button>
+                        ) : (
+                          <motion.button
+                            key="close"
+                            initial={{ scale: 0, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0, opacity: 0 }}
+                            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                            className="rounded-full w-12 h-12 flex items-center justify-center bg-red-500 text-white text-2xl shadow hover:bg-red-600 transition-colors"
+                            onClick={() => setShowOptions(false)}
+                            style={{ marginRight: '0.5rem' }}
+                          >
+                            ×
+                          </motion.button>
                         )}
                       </AnimatePresence>
                       <button
                         className="px-6 py-3 bg-black text-white rounded-full font-semibold flex items-center gap-2"
-                        onClick={() => sendMessage()}
+                        onClick={sendMessage}
                         disabled={!chatInput.trim()}
                       >
                         <Send size={20} />
