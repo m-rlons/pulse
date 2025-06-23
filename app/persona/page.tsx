@@ -84,7 +84,7 @@ function PersonaPageContent() {
                 </div>
 
                 {/* Column 2: Persona (33.34vw) */}
-                <div className="w-[33.34vw] h-screen flex flex-col justify-end items-center">
+                <div className="w-[33.34vw] h-screen flex flex-col justify-end items-center relative">
                     {persona.imageUrl && (
                         <Image 
                             src={persona.imageUrl} 
@@ -94,6 +94,29 @@ function PersonaPageContent() {
                             priority 
                         />
                     )}
+                    {/* Navigation Controls overlayed on persona image */}
+                    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-40">
+                        <div className="flex items-center gap-2 p-1.5 bg-gray-200/80 backdrop-blur-lg rounded-full shadow-lg border border-gray-300">
+                            <button 
+                                onClick={() => setView('bio')} 
+                                className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${view === 'bio' ? 'bg-black text-white' : 'bg-white text-black hover:bg-gray-50'}`}
+                            >
+                                Bio
+                            </button>
+                            <button 
+                                onClick={() => setView('chat')} 
+                                className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${view === 'chat' ? 'bg-black text-white' : 'bg-white text-black hover:bg-gray-50'}`}
+                            >
+                                Chat
+                            </button>
+                            <button 
+                                onClick={() => setView('workspace')} 
+                                className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${view === 'workspace' ? 'bg-black text-white' : 'bg-white text-black hover:bg-gray-50'}`}
+                            >
+                                Workspace
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 {/* Column 3: Interactive (66.66vw) */}
@@ -180,30 +203,6 @@ function PersonaPageContent() {
                     <ArrowLeft size={16} />
                     Staff Directory
                 </Link>
-            </div>
-
-            {/* Navigation Controls */}
-            <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-30">
-                <div className="flex items-center gap-2 p-1.5 bg-gray-200/80 backdrop-blur-lg rounded-full shadow-lg border border-gray-300">
-                    <button 
-                        onClick={() => setView('bio')} 
-                        className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${view === 'bio' ? 'bg-black text-white' : 'bg-white text-black hover:bg-gray-50'}`}
-                    >
-                        Bio
-                    </button>
-                    <button 
-                        onClick={() => setView('chat')} 
-                        className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${view === 'chat' ? 'bg-black text-white' : 'bg-white text-black hover:bg-gray-50'}`}
-                    >
-                        Chat
-                    </button>
-                    <button 
-                        onClick={() => setView('workspace')} 
-                        className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${view === 'workspace' ? 'bg-black text-white' : 'bg-white text-black hover:bg-gray-50'}`}
-                    >
-                        Workspace
-                    </button>
-                </div>
             </div>
         </div>
     );
