@@ -86,7 +86,7 @@ function PersonaPageContent() {
                 {/* Column 1: Bio (66.66vw) - shrink to 0 when staffOpen */}
                 <motion.div
                     className="h-screen flex flex-col justify-center items-end p-16"
-                    style={{ width: staffOpen ? '0vw' : '66.66vw', overflow: staffOpen ? 'hidden' : 'visible', padding: staffOpen ? 0 : undefined }}
+                    style={{ width: staffOpen ? '0vw' : '66.66vw', overflow: staffOpen ? 'hidden' : 'visible', padding: staffOpen ? 0 : undefined, opacity: staffOpen ? 0 : 1 }}
                     transition={transition}
                 >
                     {!staffOpen && (
@@ -104,14 +104,14 @@ function PersonaPageContent() {
                     )}
                 </motion.div>
 
-                {/* Column 2: Persona (33.34vw) expands to 66.66vw when staffOpen */}
+                {/* Column 2: Persona (33.34vw) expands to 66.66vw when staffOpen, only shows Staff Directory when open */}
                 <motion.div
                     className="h-screen flex flex-col items-center relative overflow-hidden"
-                    style={{ width: staffOpen ? '66.66vw' : '33.34vw' }}
+                    style={{ width: staffOpen ? '66.66vw' : '33.34vw', background: staffOpen ? '#fff' : undefined }}
                     transition={transition}
                 >
                     {staffOpen ? (
-                        // Staff Directory full height
+                        // Staff Directory full height and width
                         <div className="h-full w-full flex flex-col items-center justify-start bg-white overflow-y-auto p-8">
                             <div className="w-full flex items-center justify-between mb-8">
                                 <h1 className="text-3xl font-bold text-gray-800">Your Staff</h1>
@@ -194,7 +194,7 @@ function PersonaPageContent() {
                 {/* Column 3: Interactive (66.66vw) - shrink to 0 when staffOpen */}
                 <motion.div
                     className="h-screen relative overflow-hidden"
-                    style={{ width: staffOpen ? '0vw' : '66.66vw', overflow: staffOpen ? 'hidden' : 'visible', padding: staffOpen ? 0 : undefined }}
+                    style={{ width: staffOpen ? '0vw' : '66.66vw', overflow: staffOpen ? 'hidden' : 'visible', padding: staffOpen ? 0 : undefined, opacity: staffOpen ? 0 : 1 }}
                     transition={transition}
                 >
                     {!staffOpen && (
