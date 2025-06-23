@@ -13,6 +13,7 @@ function UnifiedPersonasArea() {
   const [staffOpen, setStaffOpen] = useState(false);
   const [view, setView] = useState<'bio' | 'chat' | 'workspace'>('bio');
   const [isLoading, setIsLoading] = useState(true);
+  const [staffExpanded, setStaffExpanded] = useState(false);
 
   useEffect(() => {
     const personasData = localStorage.getItem('personas');
@@ -26,10 +27,17 @@ function UnifiedPersonasArea() {
     setIsLoading(false);
   }, []);
 
-  // Handler for selecting a persona in the staff directory
+  // Handler for opening staff directory
+  const handleOpenStaffDirectory = () => {
+    setStaffOpen(true);
+    setTimeout(() => setStaffExpanded(true), 10); // allow vertical scroll first, then expand width
+  };
+
+  // Handler for selecting a persona
   const handlePersonaSelect = (persona: Persona) => {
     setSelectedPersona(persona);
-    setStaffOpen(false);
+    setStaffExpanded(false);
+    setTimeout(() => setStaffOpen(false), 600); // allow width contract first, then scroll down
     setView('bio');
   };
 
@@ -99,14 +107,14 @@ function UnifiedPersonasArea() {
     <div className="fixed inset-0 w-screen h-screen bg-white text-black overflow-hidden">
       <motion.div
         className="absolute top-0 left-0 flex"
-        style={{ width: '166.66vw', height: '100vh' }}
+        style={{ width: staffExpanded ? '100vw' : '166.66vw', height: '100vh' }}
         animate={{ x: canvasX }}
         transition={transition}
       >
-        {/* Column 1: Bio (66.66vw) - always visible */}
+        {/* Column 1: Bio (66.66vw) - always present but out of view when staffExpanded */}
         <motion.div
           className="h-screen flex flex-col justify-center items-end p-16"
-          style={{ width: '66.66vw' }}
+          style={{ width: '66.66vw', display: staffExpanded ? 'none' : 'block' }}
           transition={transition}
         >
           {selectedPersona && (
@@ -123,10 +131,10 @@ function UnifiedPersonasArea() {
           )}
         </motion.div>
 
-        {/* Column 2: Persona/Staff Directory (33.34vw) - content scrolls/animates vertically */}
+        {/* Column 2: Persona/Staff Directory (33.34vw or 100vw) */}
         <motion.div
           className="h-screen flex flex-col items-center relative overflow-hidden"
-          style={{ width: '33.34vw', transition: 'width 1.2s cubic-bezier(0.76,0,0.24,1)' }}
+          style={{ width: staffExpanded ? '100vw' : '33.34vw', transition: 'width 1.2s cubic-bezier(0.76,0,0.24,1)' }}
         >
           <motion.div
             className="absolute inset-0 w-full"
@@ -205,17 +213,17 @@ function UnifiedPersonasArea() {
                       ))}
                     </div>
                   )}
-                  <button onClick={() => setStaffOpen(false)} className="mt-8 px-4 py-2 bg-gray-100 text-black rounded-full text-sm font-semibold hover:bg-gray-200 flex items-center gap-2"><ArrowLeft size={16}/> Back</button>
+                  <button onClick={() => handlePersonaSelect(selectedPersona)} className="mt-8 px-4 py-2 bg-gray-100 text-black rounded-full text-sm font-semibold hover:bg-gray-200 flex items-center gap-2"><ArrowLeft size={16}/> Back</button>
                 </>
               )}
             </div>
           </motion.div>
         </motion.div>
 
-        {/* Column 3: Workspace/Chat (66.66vw) - always visible */}
+        {/* Column 3: Workspace/Chat (66.66vw) - always present but out of view when staffExpanded */}
         <motion.div
           className="h-screen relative overflow-hidden"
-          style={{ width: '66.66vw' }}
+          style={{ width: '66.66vw', display: staffExpanded ? 'none' : 'block' }}
           transition={transition}
         >
           {!staffOpen && (
@@ -300,7 +308,7 @@ function UnifiedPersonasArea() {
       {!staffOpen && (
         <div className="fixed top-8 left-8 z-30">
           <button
-            onClick={() => setStaffOpen(true)}
+            onClick={handleOpenStaffDirectory}
             className="flex items-center gap-2 text-sm font-semibold bg-gray-100/80 backdrop-blur-md px-4 py-2 rounded-full hover:bg-gray-200/80 transition-colors border border-gray-200"
           >
             <ArrowLeft size={16} />
