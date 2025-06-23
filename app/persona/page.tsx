@@ -42,9 +42,9 @@ function PersonaPageContent() {
     const transition = { duration: 0.7, ease: "easeInOut" };
 
     const personaVariants = {
-        bio: { x: "100%", y: "0%", scale: 1, opacity: 1 },
-        chat: { x: "0%", y: "0%", scale: 1, opacity: 1 },
-        workspace: { x: "50%", y: "100%", scale: 0.4, opacity: 1 }
+        bio: { x: "50%", y: "0%", scale: 1, opacity: 1 },
+        chat: { x: "-50%", y: "0%", scale: 1, opacity: 1 },
+        workspace: { x: "0%", y: "50%", scale: 0.4, opacity: 1 }
     };
 
     // Add a placeholder image component
@@ -90,71 +90,35 @@ function PersonaPageContent() {
                     transition={{ duration: 0.3 }}
                     className="absolute inset-0 z-10 flex"
                 >
-                    {view === 'bio' && (
-                        <div className="w-full flex justify-between">
-                            <BioView persona={persona} />
-                            <motion.div 
-                                className="w-1/2 h-full relative"
-                                initial={{ x: 50 }}
-                                animate={{ x: 0 }}
-                                transition={transition}
-                            >
-                                {persona.imageUrl && (
-                                    <Image 
-                                        src={persona.imageUrl} 
-                                        alt={persona.name} 
-                                        layout="fill" 
-                                        className="object-cover"
-                                        priority 
-                                    />
-                                )}
-                            </motion.div>
-                        </div>
-                    )}
-                    {view === 'chat' && (
-                        <div className="w-full flex">
-                            <motion.div 
-                                className="w-1/2 h-full relative"
-                                initial={{ x: -50 }}
-                                animate={{ x: 0 }}
-                                transition={transition}
-                            >
-                                {persona.imageUrl && (
-                                    <Image 
-                                        src={persona.imageUrl} 
-                                        alt={persona.name} 
-                                        layout="fill" 
-                                        className="object-cover"
-                                        priority 
-                                    />
-                                )}
-                            </motion.div>
-                            <ChatView persona={persona} />
-                        </div>
-                    )}
-                    {view === 'workspace' && (
-                        <div className="w-full h-full flex flex-col">
-                            <WorkspaceView persona={persona} />
-                            <motion.div 
-                                className="w-1/3 h-1/3 relative mx-auto"
-                                initial={{ y: 50 }}
-                                animate={{ y: 0 }}
-                                transition={transition}
-                            >
-                                {persona.imageUrl && (
-                                    <Image 
-                                        src={persona.imageUrl} 
-                                        alt={persona.name} 
-                                        layout="fill" 
-                                        className="object-cover"
-                                        priority 
-                                    />
-                                )}
-                            </motion.div>
-                        </div>
-                    )}
+                    {view === 'bio' && <BioView persona={persona} />}
+                    {view === 'chat' && <ChatView persona={persona} />}
+                    {view === 'workspace' && <WorkspaceView persona={persona} />}
                 </motion.div>
             </AnimatePresence>
+
+            {/* --- Persona Anchor & Navigation --- */}
+            <motion.div
+                className="absolute w-1/2 h-full top-0 left-0 z-20"
+                variants={personaVariants}
+                animate={view}
+                transition={transition}
+                style={{ 
+                    originX: '50%',
+                    originY: view === 'workspace' ? '100%' : '50%'
+                }}
+            >
+                <div className="relative w-full h-full">
+                    {persona.imageUrl && (
+                        <Image 
+                            src={persona.imageUrl} 
+                            alt={persona.name} 
+                            layout="fill" 
+                            className="object-cover"
+                            priority 
+                        />
+                    )}
+                </div>
+            </motion.div>
 
             {/* --- Navigation --- */}
             <motion.div 
