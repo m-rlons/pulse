@@ -78,10 +78,17 @@ async function generatePersona(
 
       if (!imageResponse.ok) {
         const errorBody = await imageResponse.text();
+        console.error('[generate-persona] Image API Response:', {
+          status: imageResponse.status,
+          statusText: imageResponse.statusText,
+          headers: Object.fromEntries(imageResponse.headers.entries()),
+          error: errorBody
+        });
         throw new Error(`Image generation API failed with status ${imageResponse.status}: ${errorBody}`);
       }
 
       const imageResult = await imageResponse.json();
+      console.log('[generate-persona] Image API Result:', JSON.stringify(imageResult, null, 2));
       
       if (imageResult.predictions && imageResult.predictions.length > 0) {
         const base64Data = imageResult.predictions[0].bytesBase64Encoded;
