@@ -61,7 +61,7 @@ async function generatePersona(
 
     // Generate Persona Image
     let imageUrl: string | null = null;
-    const imagePrompt = `a photorealistic headshot of ${personaWithId.visualDescriptor}. The subject should be looking directly at the camera with a neutral, yet confident expression. The background must be a solid, pure white, empty background. The final image must be ultra-realistic, high resolution, 8k, and suitable for a corporate website or LinkedIn profile. Do not include shoulders or torso.`;
+    const imagePrompt = `a professional headshot portrait of ${personaWithId.visualDescriptor}. The subject should be looking directly at the camera with a neutral, yet confident expression. Frame the shot to include the head and upper shoulders against a pure white background. The composition should be perfectly centered with equal spacing above the head and below the shoulders. The final image must be ultra-realistic, high resolution, 8k, and suitable for a corporate website or LinkedIn profile.`;
     
     try {
       console.log(`[generate-persona] Generating image with prompt: "${imagePrompt}"`);
@@ -71,7 +71,10 @@ async function generatePersona(
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          instances: [{ prompt: imagePrompt }],
+          instances: [{ 
+            prompt: imagePrompt,
+            negative_prompt: "full body shot, below chest, waist, legs, hands, extreme facial closeup, partial head" 
+          }],
           parameters: { sampleCount: 1 }
         })
       });

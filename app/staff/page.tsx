@@ -21,7 +21,7 @@ export default function StaffPage() {
     <div className="container mx-auto p-4 md:p-8">
       <header className="flex items-center justify-between mb-8">
         <h1 className="text-4xl font-bold text-gray-800">Your Staff</h1>
-        <Link href="/start" className="flex items-center gap-2 bg-black text-white px-4 py-2 rounded-md hover:bg-gray-800 transition-colors">
+        <Link href="/onboarding-flow" className="flex items-center gap-2 bg-black text-white px-4 py-2 rounded-md hover:bg-gray-800 transition-colors">
           <Plus size={20} />
           New Persona
         </Link>
