@@ -138,13 +138,6 @@ function PersonaPageContent() {
                                     >
                                         Workspace
                                     </button>
-                                    <button
-                                        onClick={() => setStaffOpen(true)}
-                                        className="ml-2 px-3 py-2 rounded-full text-sm font-medium bg-white text-black hover:bg-gray-100 flex items-center gap-1 border border-gray-300"
-                                        title="Staff Directory"
-                                    >
-                                        <Users size={16} />
-                                    </button>
                                 </div>
                             </div>
                         </div>
@@ -262,6 +255,15 @@ function PersonaPageContent() {
                     </motion.div>
                 </div>
             </motion.div>
+            <div className="fixed top-8 left-8 z-30">
+                <button
+                    onClick={() => setStaffOpen(true)}
+                    className="flex items-center gap-2 text-sm font-semibold bg-gray-100/80 backdrop-blur-md px-4 py-2 rounded-full hover:bg-gray-200/80 transition-colors border border-gray-200"
+                >
+                    <ArrowLeft size={16} />
+                    Staff Directory
+                </button>
+            </div>
         </div>
     );
 }
