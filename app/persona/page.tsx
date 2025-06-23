@@ -295,6 +295,19 @@ function UnifiedPersonasArea() {
           )}
         </motion.div>
       </motion.div>
+
+      {/* Top-left Staff Directory button */}
+      {!staffOpen && (
+        <div className="fixed top-8 left-8 z-30">
+          <button
+            onClick={() => setStaffOpen(true)}
+            className="flex items-center gap-2 text-sm font-semibold bg-gray-100/80 backdrop-blur-md px-4 py-2 rounded-full hover:bg-gray-200/80 transition-colors border border-gray-200"
+          >
+            <ArrowLeft size={16} />
+            Staff Directory
+          </button>
+        </div>
+      )}
     </div>
   );
 }
