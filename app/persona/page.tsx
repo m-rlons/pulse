@@ -80,35 +80,42 @@ function PersonaPageContent() {
                 transition={{ duration: 1.2, ease: [0.76, 0, 0.24, 1] }}
             >
                 {/* Column 1: Bio (2/3 width) */}
-                <div className="w-[66.66vw] h-screen flex justify-end items-center p-16">
-                    <BioView persona={persona} />
-                </div>
-                {/* Column 2: Persona (1/3 width) */}
-                <div className="w-[33.34vw] h-screen flex justify-center items-end">
-                    {persona.imageUrl && (
-                        <Image 
-                            src={persona.imageUrl} 
-                            alt={persona.name} 
-                            width={600} height={900}
-                            className="h-[90vh] w-full object-contain object-bottom"
-                            priority 
-                        />
+                <div className="w-[66.66vw] h-screen flex flex-col justify-center items-end p-16">
+                    {view === 'bio' && (
+                        <div className="w-full flex flex-col gap-8">
+                            <BioView persona={persona} />
+                            {/* Future: Add more stacked panes here if needed */}
+                        </div>
                     )}
                 </div>
+                {/* Column 2: Persona (1/3 width) */}
+                <div className="w-[33.34vw] h-screen flex flex-col justify-end items-center">
+                    <div className={`w-full flex ${view === 'bio' ? 'justify-end' : view === 'chat' ? 'justify-start' : 'justify-center'} items-end`}>
+                        {persona.imageUrl && (
+                            <Image 
+                                src={persona.imageUrl} 
+                                alt={persona.name} 
+                                width={600} height={900}
+                                className="h-[90vh] w-full object-contain object-bottom"
+                                priority 
+                            />
+                        )}
+                    </div>
+                </div>
                 {/* Column 3: Interactive (2/3 width) */}
-                <div className="w-[66.66vw] h-screen relative overflow-hidden">
-                    <motion.div
-                        className="w-full h-[200vh] absolute top-0 left-0"
-                        variants={{
-                            chat: { y: '-100vh' },
-                            workspace: { y: '0vh' },
-                        }}
-                        animate={view === 'workspace' ? 'workspace' : 'chat'}
-                        transition={{ duration: 1.2, ease: [0.76, 0, 0.24, 1] }}
-                    >
-                        <div className="w-full h-screen flex items-center"><WorkspaceView persona={persona} /></div>
-                        <div className="w-full h-screen flex items-center"><ChatView persona={persona} /></div>
-                    </motion.div>
+                <div className="w-[66.66vw] h-screen flex flex-col justify-center items-start p-16 relative overflow-hidden">
+                    {view === 'chat' && (
+                        <div className="w-full flex flex-col gap-8">
+                            <ChatView persona={persona} />
+                            {/* Future: Add more stacked panes here if needed */}
+                        </div>
+                    )}
+                    {view === 'workspace' && (
+                        <div className="w-full flex flex-col gap-8">
+                            <WorkspaceView persona={persona} />
+                            {/* Future: Add more stacked panes here if needed */}
+                        </div>
+                    )}
                 </div>
             </motion.div>
 
