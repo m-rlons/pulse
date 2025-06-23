@@ -1,165 +1,158 @@
 'use client';
 
-import React, { useState, useEffect, Suspense, useRef } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { Persona, ChatMessage, AssessmentResult, Statement, Document } from '../../lib/types';
-import { Loader, Send, MessageSquare, FileText, BarChart2 } from 'lucide-react';
-import PillNavigation from '../../components/PillNavigation'; // Assuming this component exists
+import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Persona, ChatMessage } from '../../lib/types';
+import { Loader, Send, ArrowLeft } from 'lucide-react';
 
-const DIMENSIONS = ["spend", "loyalty", "investment", "interest", "social", "novelty"];
-
-// --- View Components ---
-
-const PersonaView: React.FC<{ persona: Persona; assessmentResults: AssessmentResult[]; onEdit: (dim: string) => void }> = ({ persona, assessmentResults, onEdit }) => {
-  const [activeTab, setActiveTab] = useState<'bio' | 'data' | 'refine'>('bio');
-  
-  const BioPanel = () => (
-      <div className="p-8"><h2 className="text-2xl font-bold mb-1">{persona.name}</h2>{/*...bio details...*/}</div>
-  );
-  
-  const DataPanel = () => {
-      // ... data panel implementation with dimension scores and swipe history
-      return <div className="p-8">Data Panel Content</div>
-  };
-
-  const RefinePanel = () => (
-      <div className="p-8"><h2 className="text-xl font-bold mb-4">Refine a Dimension</h2><div className="flex flex-wrap gap-2">{DIMENSIONS.map(dim => (<button key={dim} onClick={() => onEdit(dim)} className="...">{dim}</button>))}</div></div>
-  );
-
-  const renderInfoPanel = () => {
-      switch(activeTab) {
-          case 'bio': return <BioPanel />;
-          case 'data': return <DataPanel />;
-          case 'refine': return <RefinePanel />;
-      }
-  }
-
-  return (
-    <div className="flex h-full w-full">
-      <div className="w-1/2 h-full relative bg-gray-100">
-        <Image src={persona.imageUrl!} alt={persona.name} layout="fill" className="object-cover" priority />
-      </div>
-      <div className="w-1/2 h-full flex flex-col border-l">
-        <nav className="flex-shrink-0 border-b">
-          <button onClick={() => setActiveTab('bio')} className={`px-4 py-3 font-medium text-sm ${activeTab === 'bio' ? 'text-black border-b-2 border-black' : 'text-gray-500'}`}>Bio</button>
-          <button onClick={() => setActiveTab('data')} className={`px-4 py-3 font-medium text-sm ${activeTab === 'data' ? 'text-black border-b-2 border-black' : 'text-gray-500'}`}>Data</button>
-          <button onClick={() => setActiveTab('refine')} className={`px-4 py-3 font-medium text-sm ${activeTab === 'refine' ? 'text-black border-b-2 border-black' : 'text-gray-500'}`}>Refine</button>
-        </nav>
-        <div className="flex-grow overflow-y-auto">
-            {renderInfoPanel()}
-        </div>
-      </div>
-    </div>
-  );
-};
-
-const ChatView: React.FC<{ persona: Persona }> = ({ persona }) => {
-    const [messages, setMessages] = useState<ChatMessage[]>([]);
-    const [input, setInput] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const messagesEndRef = useRef<HTMLDivElement>(null);
+// --- Main Page Component ---
+function PersonaPageContent() {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+    const personaId = searchParams.get('id');
+    const [persona, setPersona] = useState<Persona | null>(null);
+    const [view, setView] = useState<'bio' | 'chat' | 'workspace'>('bio');
 
     useEffect(() => {
-        // Load chat history from localStorage based on persona.id
-        const chatHistoryData = localStorage.getItem(`chatHistory_${persona.id}`);
-        if (chatHistoryData) {
-            setMessages(JSON.parse(chatHistoryData));
-        } else {
-            setMessages([{ role: 'persona', content: `Hello, I'm ${persona.name}. Ask me anything.` }]);
+        if (personaId) {
+            const personasData = localStorage.getItem('personas');
+            if (personasData) {
+                const personas: Persona[] = JSON.parse(personasData);
+                const currentPersona = personas.find(p => p.id === personaId);
+                setPersona(currentPersona || null);
+            }
         }
-    }, [persona.id, persona.name]);
+    }, [personaId]);
 
-    useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }, [messages]);
-
-    const handleSend = async () => {
-        if (!input.trim()) return;
-        
-        const newMessages: ChatMessage[] = [...messages, { role: 'user', content: input }];
-        setMessages(newMessages);
-        setInput('');
-        setIsLoading(true);
-
-        // ... API call to /api/chat-with-persona and stream handling ...
-
-        setIsLoading(false);
-    };
+    if (!persona) {
+        return <div className="h-screen w-full flex items-center justify-center"><Loader className="animate-spin" /></div>;
+    }
 
     return (
-        <div className="h-full flex flex-col bg-white">
-            <div className="flex-1 overflow-y-auto p-8 space-y-4">
-                {messages.map((msg, index) => (
-                    <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
-                        {/* Message bubble styling */}
-                        <div className={`max-w-md p-4 rounded-2xl ${ msg.role === 'persona' ? 'bg-gray-100' : 'bg-black text-white' }`}>
-                            <p>{msg.content}</p>
-                        </div>
-                    </div>
-                ))}
-                <div ref={messagesEndRef} />
+        <div className="h-screen w-full bg-black text-white overflow-hidden">
+            {/* Background Persona Image */}
+            <motion.div 
+                className="absolute inset-0 z-0"
+                animate={{ scale: view === 'workspace' ? 1.05 : 1, opacity: view === 'workspace' ? 0.3 : 0.6 }}
+                transition={{ duration: 0.5 }}
+            >
+                {persona.imageUrl && (
+                    <Image src={persona.imageUrl} alt={persona.name} layout="fill" className="object-cover" priority />
+                )}
+            </motion.div>
+
+            {/* Top Left Navigation */}
+            <div className="absolute top-8 left-8 z-20">
+                <Link href="/staff" className="flex items-center gap-2 text-sm font-semibold bg-black/30 backdrop-blur-sm px-3 py-2 rounded-lg hover:bg-black/50 transition-colors">
+                    <ArrowLeft size={16} />
+                    Staff Directory
+                </Link>
             </div>
-            <div className="p-4 border-t">
-                <form onSubmit={(e) => {e.preventDefault(); handleSend();}} className="relative">
-                    <input value={input} onChange={(e) => setInput(e.target.value)} disabled={isLoading} className="w-full p-4 rounded-full bg-gray-100" placeholder="Ask anything..."/>
-                    <button type="submit" disabled={isLoading} className="absolute right-4 top-1/2 -translate-y-1/2"><Send size={20} /></button>
-                </form>
+
+            {/* Main Content Area */}
+            <div className="relative z-10 h-full">
+                <AnimatePresence mode="wait">
+                    <motion.div
+                        key={view}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        transition={{ duration: 0.3 }}
+                        className="h-full"
+                    >
+                        {view === 'bio' && <BioView persona={persona} />}
+                        {view === 'chat' && <ChatView persona={persona} />}
+                        {view === 'workspace' && <WorkspaceView persona={persona} />}
+                    </motion.div>
+                </AnimatePresence>
+            </div>
+
+
+            {/* Floating Navigation */}
+            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-20">
+                 <div className="flex items-center gap-2 p-2 bg-black/30 backdrop-blur-lg rounded-full shadow-lg border border-white/20">
+                    <button onClick={() => setView('bio')} className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${view === 'bio' ? 'bg-white text-black' : 'hover:bg-white/20'}`}>Bio</button>
+                    <button onClick={() => setView('chat')} className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${view === 'chat' ? 'bg-white text-black' : 'hover:bg-white/20'}`}>Chat</button>
+                    <button onClick={() => setView('workspace')} className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${view === 'workspace' ? 'bg-white text-black' : 'hover:bg-white/20'}`}>Workspace</button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+
+// --- View-specific Components ---
+
+const BioView: React.FC<{ persona: Persona }> = ({ persona }) => {
+    return (
+        <div className="h-full flex items-center justify-start text-left p-24">
+            <div className="max-w-md">
+                <Link href={`/swipe?refine=core&personaId=${persona.id}`} className="text-sm font-semibold text-gray-300 hover:text-white">↳ Edit</Link>
+                <h1 className="text-6xl font-bold mt-2">{persona.name}</h1>
+                <p className="text-xl text-gray-300 mt-2">{persona.age} years old</p>
+                <p className="text-xl text-gray-300">{persona.role} - {persona.experience}</p>
+                
+                <div className="mt-12 space-y-6 text-base text-gray-200 border-t border-gray-700 pt-6">
+                    <div><h3 className="font-bold mb-2 text-white">Bio</h3><p className="whitespace-pre-wrap">{persona.bio}</p></div>
+                    <div><h3 className="font-bold mb-2 text-white">Interests</h3><p>{persona.interests}</p></div>
+                    <div><h3 className="font-bold mb-2 text-white">Disinterests</h3><p>{persona.disinterests}</p></div>
+                </div>
+                 <p className="mt-12 text-sm text-gray-500">↓ SCROLL TO CONTINUE READING</p>
             </div>
         </div>
     );
 };
 
+const ChatView: React.FC<{ persona: Persona }> = ({ persona }) => {
+    const [messages, setMessages] = useState<ChatMessage[]>([]);
+    const [input, setInput] = useState('');
+    // Mock sending logic
+    const handleSend = () => {
+        if (!input.trim()) return;
+        setMessages([...messages, { role: 'user', content: input }]);
+        setInput('');
+    };
+    return (
+         <div className="h-full flex flex-col items-center justify-end p-8">
+            <div className="w-full max-w-2xl space-y-4 mb-4">
+                 {messages.map((msg, index) => (
+                    <div key={index} className={`flex items-start gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
+                        <div className={`max-w-md p-4 rounded-2xl ${ msg.role === 'persona' ? 'bg-gray-800' : 'bg-blue-600' }`}>
+                            <p>{msg.content}</p>
+                        </div>
+                    </div>
+                ))}
+            </div>
+             <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="w-full max-w-2xl">
+                <input value={input} onChange={(e) => setInput(e.target.value)} className="w-full p-4 bg-black/50 rounded-lg backdrop-blur-sm" placeholder="what do you do?" />
+            </form>
+        </div>
+    );
+};
+
 const WorkspaceView: React.FC<{ persona: Persona }> = ({ persona }) => {
-    return <div className="p-8">Workspace for {persona.name}</div>;
+    return (
+        <div className="h-full flex flex-col items-center justify-center text-center p-12">
+            <h1 className="text-4xl font-bold">Workspace</h1>
+            <p className="text-lg text-gray-400 mt-2">Documents for {persona.name}</p>
+            <div className="mt-8 grid grid-cols-2 gap-8">
+                <div>
+                    <h2 className="font-semibold">Generated Documents</h2>
+                    <div className="mt-4 grid grid-cols-3 gap-4">{[...Array(3)].map((_, i) => <div key={i} className="h-24 bg-white/10 rounded-lg"></div>)}</div>
+                </div>
+                 <div>
+                    <h2 className="font-semibold">Uploaded Documents</h2>
+                    <div className="mt-4 grid grid-cols-3 gap-4">{[...Array(3)].map((_, i) => <div key={i} className="h-24 bg-white/10 rounded-lg"></div>)}</div>
+                </div>
+            </div>
+        </div>
+    );
 };
 
 
-// --- Main Page ---
-
-function PersonaPageContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const personaId = searchParams.get('id');
-  
-  const [persona, setPersona] = useState<Persona | null>(null);
-  const [assessmentResults, setAssessmentResults] = useState<AssessmentResult[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [currentView, setCurrentView] = useState<'persona' | 'chat' | 'workspace'>('persona');
-
-  useEffect(() => {
-    if (!personaId) { /* ... */ return; }
-    // ... data loading logic for persona and assessmentResults ...
-  }, [personaId]);
-
-  const handleEditDimension = (dimension: string) => {
-    router.push(`/swipe?refine=${dimension}&personaId=${personaId}`);
-  };
-
-  if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
-  if (!persona) return <div>Persona not found.</div>;
-
-  const renderView = () => {
-    switch(currentView) {
-      case 'persona':
-        return <PersonaView persona={persona} assessmentResults={assessmentResults} onEdit={handleEditDimension} />;
-      case 'chat':
-        return <ChatView persona={persona} />;
-      case 'workspace':
-        return <WorkspaceView persona={persona} />;
-    }
-  }
-
-  return (
-    <div className="w-full h-screen">
-      {renderView()}
-      <PillNavigation currentView={currentView} setView={setCurrentView} />
-    </div>
-  );
-}
-
 export default function PersonaPage() {
-  return <Suspense fallback={<div>Loading...</div>}><PersonaPageContent /></Suspense>;
+    return <Suspense fallback={<div>Loading...</div>}><PersonaPageContent /></Suspense>;
 } 
