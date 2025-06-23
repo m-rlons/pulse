@@ -93,7 +93,7 @@ export default function OnboardingFlow() {
       </div>
       <div className="mt-12 flex justify-center">
         <a
-          href="/persona?id="
+          href="/persona"
           className="inline-flex items-center gap-2 px-6 py-3 bg-gray-100 text-black rounded-full font-semibold text-lg shadow hover:bg-gray-200 transition-colors border border-gray-300"
         >
           <ArrowRight size={18} />
