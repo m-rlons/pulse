@@ -45,23 +45,29 @@ export async function POST(req: NextRequest) {
     const safePersonaId = persona.id ? String(persona.id).replace(/[^a-zA-Z0-9_-]/g, '') : undefined;
     let documentContent: string | undefined = undefined;
     if (safePersonaId) {
+      try {
         const personaUploadDir = join(UPLOADS_ROOT_DIR, safePersonaId);
+        let fileContents: string[] = [];
         try {
-            const filenames = await readdir(personaUploadDir);
-            const fileContents = await Promise.all(
-                filenames
-                    .filter(name => !name.startsWith('.')) // Exclude hidden files
-                    .map(name => readFile(join(personaUploadDir, name), 'utf-8'))
-            );
-            if (fileContents.length > 0) {
-                documentContent = fileContents.join('\n\n---\n\n');
-            }
-        } catch (e) {
-            // It's okay if the directory doesn't exist, just means no documents.
-            if (e && typeof e === 'object' && 'code' in e && e.code !== 'ENOENT') {
-                 console.error(`Failed to read documents for persona ${safePersonaId}:`, e);
-            }
+          const filenames = await readdir(personaUploadDir);
+          fileContents = await Promise.all(
+            filenames
+              .filter(name => !name.startsWith('.'))
+              .map(name => readFile(join(personaUploadDir, name), 'utf-8'))
+          );
+        } catch (e: any) {
+          // If the directory doesn't exist, that's fine—just means no documents.
+          if (e.code !== 'ENOENT') {
+            console.error(`[chat-with-persona] Unexpected file system error for persona ${safePersonaId}:`, e);
+          }
         }
+        if (fileContents.length > 0) {
+          documentContent = fileContents.join('\n\n---\n\n');
+        }
+      } catch (e) {
+        // Only log truly unexpected errors
+        console.error(`[chat-with-persona] Unexpected error in upload reading for persona ${safePersonaId}:`, e);
+      }
     }
     
     const modelName = generateImage
