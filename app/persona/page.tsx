@@ -110,51 +110,9 @@ function PersonaPageContent() {
                     style={{ width: staffOpen ? '66.66vw' : '33.34vw' }}
                     transition={transition}
                 >
-                    <motion.div
-                        className="absolute inset-0 w-full"
-                        style={{ height: '200vh' }}
-                        animate={{ y: staffY }}
-                        transition={transition}
-                    >
-                        {/* Top: Persona image + navigation */}
-                        <div className="h-screen flex flex-col justify-end items-center relative">
-                            {!staffOpen && persona.imageUrl && (
-                                <Image 
-                                    src={persona.imageUrl} 
-                                    alt={persona.name} 
-                                    width={600} height={900}
-                                    className="h-[90vh] w-full object-contain object-bottom"
-                                    priority 
-                                />
-                            )}
-                            {/* Navigation Controls overlayed on persona image */}
-                            {!staffOpen && (
-                                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-40">
-                                    <div className="flex items-center gap-2 p-1.5 bg-gray-200/80 backdrop-blur-lg rounded-full shadow-lg border border-gray-300">
-                                        <button 
-                                            onClick={() => setView('bio')} 
-                                            className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${view === 'bio' ? 'bg-black text-white' : 'bg-white text-black hover:bg-gray-50'}`}
-                                        >
-                                            Bio
-                                        </button>
-                                        <button 
-                                            onClick={() => setView('chat')} 
-                                            className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${view === 'chat' ? 'bg-black text-white' : 'bg-white text-black hover:bg-gray-50'}`}
-                                        >
-                                            Chat
-                                        </button>
-                                        <button 
-                                            onClick={() => setView('workspace')} 
-                                            className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${view === 'workspace' ? 'bg-black text-white' : 'bg-white text-black hover:bg-gray-50'}`}
-                                        >
-                                            Workspace
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                        {/* Bottom: Staff Directory */}
-                        <div className="h-screen flex flex-col items-center justify-start bg-white overflow-y-auto p-8">
+                    {staffOpen ? (
+                        // Staff Directory full height
+                        <div className="h-full w-full flex flex-col items-center justify-start bg-white overflow-y-auto p-8">
                             <div className="w-full flex items-center justify-between mb-8">
                                 <h1 className="text-3xl font-bold text-gray-800">Your Staff</h1>
                                 <Link href="/onboarding-flow" className="flex items-center gap-2 bg-black text-white px-4 py-2 rounded-md hover:bg-gray-800 transition-colors">
@@ -187,7 +145,50 @@ function PersonaPageContent() {
                             )}
                             <button onClick={() => setStaffOpen(false)} className="mt-8 px-4 py-2 bg-gray-100 text-black rounded-full text-sm font-semibold hover:bg-gray-200 flex items-center gap-2"><ArrowLeft size={16}/> Back</button>
                         </div>
-                    </motion.div>
+                    ) : (
+                        <motion.div
+                            className="absolute inset-0 w-full"
+                            style={{ height: '200vh' }}
+                            animate={{ y: staffY }}
+                            transition={transition}
+                        >
+                            {/* Top: Persona image + navigation */}
+                            <div className="h-screen flex flex-col justify-end items-center relative">
+                                {persona.imageUrl && (
+                                    <Image 
+                                        src={persona.imageUrl} 
+                                        alt={persona.name} 
+                                        width={600} height={900}
+                                        className="h-[90vh] w-full object-contain object-bottom"
+                                        priority 
+                                    />
+                                )}
+                                {/* Navigation Controls overlayed on persona image */}
+                                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-40">
+                                    <div className="flex items-center gap-2 p-1.5 bg-gray-200/80 backdrop-blur-lg rounded-full shadow-lg border border-gray-300">
+                                        <button 
+                                            onClick={() => setView('bio')} 
+                                            className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${view === 'bio' ? 'bg-black text-white' : 'bg-white text-black hover:bg-gray-50'}`}
+                                        >
+                                            Bio
+                                        </button>
+                                        <button 
+                                            onClick={() => setView('chat')} 
+                                            className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${view === 'chat' ? 'bg-black text-white' : 'bg-white text-black hover:bg-gray-50'}`}
+                                        >
+                                            Chat
+                                        </button>
+                                        <button 
+                                            onClick={() => setView('workspace')} 
+                                            className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${view === 'workspace' ? 'bg-black text-white' : 'bg-white text-black hover:bg-gray-50'}`}
+                                        >
+                                            Workspace
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
                 </motion.div>
 
                 {/* Column 3: Interactive (66.66vw) - shrink to 0 when staffOpen */}
