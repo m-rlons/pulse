@@ -37,9 +37,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
 
+    // Sanitize persona.id for safe file paths
+    const safePersonaId = persona.id ? String(persona.id).replace(/[^a-zA-Z0-9_-]/g, '') : undefined;
     let documentContent: string | undefined = undefined;
-    if (persona.id) {
-        const personaUploadDir = join(UPLOADS_ROOT_DIR, persona.id);
+    if (safePersonaId) {
+        const personaUploadDir = join(UPLOADS_ROOT_DIR, safePersonaId);
         try {
             const filenames = await readdir(personaUploadDir);
             const fileContents = await Promise.all(
@@ -47,15 +49,13 @@ export async function POST(req: NextRequest) {
                     .filter(name => !name.startsWith('.')) // Exclude hidden files
                     .map(name => readFile(join(personaUploadDir, name), 'utf-8'))
             );
-            
             if (fileContents.length > 0) {
                 documentContent = fileContents.join('\n\n---\n\n');
             }
-
         } catch (e) {
             // It's okay if the directory doesn't exist, just means no documents.
             if (e && typeof e === 'object' && 'code' in e && e.code !== 'ENOENT') {
-                 console.error(`Failed to read documents for persona ${persona.id}:`, e);
+                 console.error(`Failed to read documents for persona ${safePersonaId}:`, e);
             }
         }
     }
@@ -63,41 +63,51 @@ export async function POST(req: NextRequest) {
     const modelName = generateImage
       ? 'gemini-2.0-flash-preview-image-generation'
       : 'gemini-2.5-flash';
+    console.log('[chat-with-persona] Request:', { personaId: safePersonaId, modelName, generateImage, chatHistory });
     const model = genAI.getGenerativeModel({ 
         model: modelName,
         systemInstruction: getSystemPrompt(persona, documentContent),
     });
     
-    // The last message from the user is the one we need to respond to.
-    const latestUserMessage = chatHistory.pop();
+    // Avoid mutating chatHistory
+    const latestUserMessage = chatHistory[chatHistory.length - 1];
+    const historyForModel = chatHistory.slice(0, -1);
     if (!latestUserMessage || latestUserMessage.role !== 'user') {
         // This case should not happen in normal flow
+        console.error('[chat-with-persona] No user message to respond to', { latestUserMessage, chatHistory });
         return NextResponse.json({ error: 'No user message to respond to' }, { status: 400 });
     }
     
-    const history = chatHistory.map(m => ({
+    const history = historyForModel.map(m => ({
         role: m.role === 'user' ? 'user' : 'model',
         parts: [{ text: m.content }]
     }));
     
-    const chat = model.startChat({ history });
-    const result = await chat.sendMessageStream(latestUserMessage.content);
-    
-    const stream = new ReadableStream({
-      async start(controller) {
-        for await (const chunk of result.stream) {
-          const chunkText = chunk.text();
-          controller.enqueue(new TextEncoder().encode(chunkText));
+    try {
+      const chat = model.startChat({ history });
+      const result = await chat.sendMessageStream(latestUserMessage.content);
+      const stream = new ReadableStream({
+        async start(controller) {
+          for await (const chunk of result.stream) {
+            const chunkText = chunk.text();
+            controller.enqueue(new TextEncoder().encode(chunkText));
+          }
+          controller.close();
         }
-        controller.close();
-      }
-    });
-
-    return new Response(stream, {
-        headers: {
-            'Content-Type': 'text/plain; charset=utf-8',
-        }
-    });
+      });
+      return new Response(stream, {
+          headers: {
+              'Content-Type': 'text/plain; charset=utf-8',
+          }
+      });
+    } catch (error) {
+      console.error('[chat-with-persona] Model error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      return NextResponse.json(
+        { error: 'Failed to get chat response', details: errorMessage },
+        { status: 500 }
+      );
+    }
 
   } catch (error) {
     console.error('[chat-with-persona] Error:', error);
