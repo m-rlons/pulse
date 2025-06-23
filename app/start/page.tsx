@@ -4,7 +4,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Bento } from '../../lib/types';
 import { v4 as uuidv4 } from 'uuid';
-import { Dice1 } from 'lucide-react';
+import { Dices } from 'lucide-react';
 
 const sampleBentos: (Omit<Bento, 'id' | 'timestamp'> & { title: string })[] = [
     {
@@ -70,7 +70,7 @@ export default function StartPage() {
                     onClick={handleRandomBento}
                     className="bg-black text-white p-6 rounded-lg shadow-md hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer border flex flex-col items-center justify-center text-center"
                 >
-                    <Dice1 size={32} className="mb-4" />
+                    <Dices size={32} className="mb-4" />
                     <h2 className="text-xl font-bold">Random Business</h2>
                     <p className="mt-4 text-sm text-gray-300">Click to try a random business idea</p>
                 </div>
