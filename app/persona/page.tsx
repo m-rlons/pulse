@@ -6,7 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Persona, ChatMessage, Document } from '../../lib/types';
-import { Loader, ArrowLeft, Send, UploadCloud, FileText, Trash2 } from 'lucide-react';
+import { Loader, ArrowLeft, Send, UploadCloud, FileText, Trash2, Users, Plus } from 'lucide-react';
 
 // --- Main Page Component ---
 function PersonaPageContent() {
@@ -14,21 +14,26 @@ function PersonaPageContent() {
     const [view, setView] = useState<'bio' | 'chat' | 'workspace'>('bio');
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [staffOpen, setStaffOpen] = useState(false);
+    const [personas, setPersonas] = useState<Persona[]>([]);
 
     const searchParams = useSearchParams();
     const personaId = searchParams.get('id');
 
     useEffect(() => {
+        const personasData = localStorage.getItem('personas');
+        if (personasData) {
+            setPersonas(JSON.parse(personasData));
+        }
         if (!personaId) {
             setError("No persona ID specified.");
             setIsLoading(false);
             return;
         }
         try {
-            const personasData = localStorage.getItem('personas');
             if (!personasData) throw new Error("No personas found.");
-            const personas: Persona[] = JSON.parse(personasData);
-            const currentPersona = personas.find(p => p.id === personaId);
+            const personasArr: Persona[] = JSON.parse(personasData);
+            const currentPersona = personasArr.find(p => p.id === personaId);
             if (!currentPersona) throw new Error("Persona not found.");
             setPersona(currentPersona);
         } catch (e: any) {
@@ -44,6 +49,16 @@ function PersonaPageContent() {
     // Canvas position states
     const canvasX = view === 'bio' ? '0vw' : '-66.66vw';
     const interactiveY = view === 'workspace' ? '0vh' : '-100vh';
+    const staffY = staffOpen ? '-100vh' : '0vh';
+
+    // Handler for selecting a persona in the staff directory
+    const handlePersonaSelect = (id?: string) => {
+        if (!id) return;
+        setStaffOpen(false);
+        setTimeout(() => {
+            window.location.href = `/persona?id=${id}`;
+        }, 600); // allow slide up before navigation
+    };
 
     if (isLoading) {
         return <div className="min-h-screen w-full flex items-center justify-center bg-white"><Loader className="animate-spin text-gray-400" /></div>;
@@ -54,7 +69,7 @@ function PersonaPageContent() {
             <div className="min-h-screen w-full flex flex-col items-center justify-center bg-white text-black p-8 text-center">
                 <h1 className="text-2xl font-bold text-red-500">Could not load Persona</h1>
                 <p className="mt-2 text-gray-600 max-w-md">{error || "Persona data is missing."}</p>
-                <Link href="/staff" className="mt-6 px-4 py-2 bg-gray-100 text-black rounded-full text-sm font-semibold hover:bg-gray-200">Go to Staff Directory</Link>
+                <button onClick={() => setStaffOpen(true)} className="mt-6 px-4 py-2 bg-gray-100 text-black rounded-full text-sm font-semibold hover:bg-gray-200 flex items-center gap-2"><Users size={16}/> Staff Directory</button>
             </div>
         );
     }
@@ -83,40 +98,91 @@ function PersonaPageContent() {
                     </div>
                 </div>
 
-                {/* Column 2: Persona (33.34vw) */}
-                <div className="w-[33.34vw] h-screen flex flex-col justify-end items-center relative">
-                    {persona.imageUrl && (
-                        <Image 
-                            src={persona.imageUrl} 
-                            alt={persona.name} 
-                            width={600} height={900}
-                            className="h-[90vh] w-full object-contain object-bottom"
-                            priority 
-                        />
-                    )}
-                    {/* Navigation Controls overlayed on persona image */}
-                    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-40">
-                        <div className="flex items-center gap-2 p-1.5 bg-gray-200/80 backdrop-blur-lg rounded-full shadow-lg border border-gray-300">
-                            <button 
-                                onClick={() => setView('bio')} 
-                                className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${view === 'bio' ? 'bg-black text-white' : 'bg-white text-black hover:bg-gray-50'}`}
-                            >
-                                Bio
-                            </button>
-                            <button 
-                                onClick={() => setView('chat')} 
-                                className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${view === 'chat' ? 'bg-black text-white' : 'bg-white text-black hover:bg-gray-50'}`}
-                            >
-                                Chat
-                            </button>
-                            <button 
-                                onClick={() => setView('workspace')} 
-                                className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${view === 'workspace' ? 'bg-black text-white' : 'bg-white text-black hover:bg-gray-50'}`}
-                            >
-                                Workspace
-                            </button>
+                {/* Column 2: Persona (33.34vw) with vertical slide for Staff Directory */}
+                <div className="w-[33.34vw] h-screen flex flex-col items-center relative overflow-hidden">
+                    <motion.div
+                        className="absolute inset-0 w-full"
+                        style={{ height: '200vh' }}
+                        animate={{ y: staffY }}
+                        transition={transition}
+                    >
+                        {/* Top: Persona image + navigation */}
+                        <div className="h-screen flex flex-col justify-end items-center relative">
+                            {persona.imageUrl && (
+                                <Image 
+                                    src={persona.imageUrl} 
+                                    alt={persona.name} 
+                                    width={600} height={900}
+                                    className="h-[90vh] w-full object-contain object-bottom"
+                                    priority 
+                                />
+                            )}
+                            {/* Navigation Controls overlayed on persona image */}
+                            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-40">
+                                <div className="flex items-center gap-2 p-1.5 bg-gray-200/80 backdrop-blur-lg rounded-full shadow-lg border border-gray-300">
+                                    <button 
+                                        onClick={() => setView('bio')} 
+                                        className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${view === 'bio' ? 'bg-black text-white' : 'bg-white text-black hover:bg-gray-50'}`}
+                                    >
+                                        Bio
+                                    </button>
+                                    <button 
+                                        onClick={() => setView('chat')} 
+                                        className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${view === 'chat' ? 'bg-black text-white' : 'bg-white text-black hover:bg-gray-50'}`}
+                                    >
+                                        Chat
+                                    </button>
+                                    <button 
+                                        onClick={() => setView('workspace')} 
+                                        className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${view === 'workspace' ? 'bg-black text-white' : 'bg-white text-black hover:bg-gray-50'}`}
+                                    >
+                                        Workspace
+                                    </button>
+                                    <button
+                                        onClick={() => setStaffOpen(true)}
+                                        className="ml-2 px-3 py-2 rounded-full text-sm font-medium bg-white text-black hover:bg-gray-100 flex items-center gap-1 border border-gray-300"
+                                        title="Staff Directory"
+                                    >
+                                        <Users size={16} />
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                    </div>
+                        {/* Bottom: Staff Directory */}
+                        <div className="h-screen flex flex-col items-center justify-start bg-white overflow-y-auto p-8">
+                            <div className="w-full flex items-center justify-between mb-8">
+                                <h1 className="text-3xl font-bold text-gray-800">Your Staff</h1>
+                                <Link href="/onboarding-flow" className="flex items-center gap-2 bg-black text-white px-4 py-2 rounded-md hover:bg-gray-800 transition-colors">
+                                    <Plus size={20} />
+                                    New Persona
+                                </Link>
+                            </div>
+                            {personas.length === 0 ? (
+                                <div className="text-center py-20">
+                                    <p className="text-gray-500">You haven't generated any personas yet.</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+                                    {personas.map(p => (
+                                        <button
+                                            key={p.id}
+                                            onClick={() => handlePersonaSelect(p.id)}
+                                            className="block w-full bg-white p-4 rounded-lg shadow hover:shadow-lg transition-shadow border text-left"
+                                        >
+                                            <div className="aspect-square bg-gray-100 rounded-md mb-4 overflow-hidden">
+                                                {p.imageUrl && (
+                                                    <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
+                                                )}
+                                            </div>
+                                            <h2 className="font-bold text-lg">{p.name}</h2>
+                                            <p className="text-sm text-gray-600">{p.role}</p>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                            <button onClick={() => setStaffOpen(false)} className="mt-8 px-4 py-2 bg-gray-100 text-black rounded-full text-sm font-semibold hover:bg-gray-200 flex items-center gap-2"><ArrowLeft size={16}/> Back</button>
+                        </div>
+                    </motion.div>
                 </div>
 
                 {/* Column 3: Interactive (66.66vw) */}
@@ -196,14 +262,6 @@ function PersonaPageContent() {
                     </motion.div>
                 </div>
             </motion.div>
-
-            {/* Static Navigation Elements */}
-            <div className="fixed top-8 left-8 z-30">
-                <Link href="/staff" className="flex items-center gap-2 text-sm font-semibold bg-gray-100/80 backdrop-blur-md px-4 py-2 rounded-full hover:bg-gray-200/80 transition-colors border border-gray-200">
-                    <ArrowLeft size={16} />
-                    Staff Directory
-                </Link>
-            </div>
         </div>
     );
 }
