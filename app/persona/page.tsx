@@ -42,18 +42,27 @@ function PersonaPageContent() {
     const transition = { duration: 0.7, ease: "easeInOut" };
 
     const personaVariants = {
-        bio: { x: "25%", y: "0%", scale: 1, opacity: 1 },
-        chat: { x: "-25%", y: "0%", scale: 1, opacity: 1 },
-        workspace: { x: "0%", y: "75%", scale: 0.4, opacity: 1 }
+        bio: { x: "100%", y: "0%", scale: 1, opacity: 1 },
+        chat: { x: "0%", y: "0%", scale: 1, opacity: 1 },
+        workspace: { x: "50%", y: "100%", scale: 0.4, opacity: 1 }
     };
 
+    // Add a placeholder image component
+    const PersonaImagePlaceholder = ({ name }: { name: string }) => (
+        <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+            <div className="text-6xl font-bold text-gray-300">
+                {name.charAt(0)}
+            </div>
+        </div>
+    );
+
     if (isLoading) {
-        return <div className="h-screen w-full flex items-center justify-center bg-white"><Loader className="animate-spin text-gray-400" /></div>;
+        return <div className="min-h-screen w-full flex items-center justify-center bg-white"><Loader className="animate-spin text-gray-400" /></div>;
     }
     
     if (error || !persona) {
         return (
-            <div className="h-screen w-full flex flex-col items-center justify-center bg-white text-black p-8 text-center">
+            <div className="min-h-screen w-full flex flex-col items-center justify-center bg-white text-black p-8 text-center">
                 <h1 className="text-2xl font-bold text-red-500">Could not load Persona</h1>
                 <p className="mt-2 text-gray-600 max-w-md">{error || "Persona data is missing."}</p>
                 <Link href="/staff" className="mt-6 px-4 py-2 bg-gray-100 text-black rounded-full text-sm font-semibold hover:bg-gray-200">Go to Staff Directory</Link>
@@ -62,9 +71,9 @@ function PersonaPageContent() {
     }
 
     return (
-        <div className="h-screen w-full bg-white text-black relative overflow-hidden">
+        <div className="min-h-screen w-full bg-white text-black relative">
             {/* --- Static Staff Directory Link --- */}
-            <div className="absolute top-8 left-8 z-30">
+            <div className="fixed top-8 left-8 z-30">
                 <Link href="/staff" className="flex items-center gap-2 text-sm font-semibold bg-gray-100/80 backdrop-blur-md px-4 py-2 rounded-full hover:bg-gray-200/80 transition-colors border border-gray-200">
                     <ArrowLeft size={16} />
                     Staff Directory
@@ -79,45 +88,86 @@ function PersonaPageContent() {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.3 }}
-                    className="absolute inset-0 z-10"
+                    className="absolute inset-0 z-10 flex"
                 >
-                    {view === 'bio' && <BioView persona={persona} />}
-                    {view === 'chat' && <ChatView persona={persona} />}
-                    {view === 'workspace' && <WorkspaceView persona={persona} />}
+                    {view === 'bio' && (
+                        <div className="w-full flex justify-between">
+                            <BioView persona={persona} />
+                            <motion.div 
+                                className="w-1/2 h-full relative"
+                                initial={{ x: 50 }}
+                                animate={{ x: 0 }}
+                                transition={transition}
+                            >
+                                {persona.imageUrl && (
+                                    <Image 
+                                        src={persona.imageUrl} 
+                                        alt={persona.name} 
+                                        layout="fill" 
+                                        className="object-cover"
+                                        priority 
+                                    />
+                                )}
+                            </motion.div>
+                        </div>
+                    )}
+                    {view === 'chat' && (
+                        <div className="w-full flex">
+                            <motion.div 
+                                className="w-1/2 h-full relative"
+                                initial={{ x: -50 }}
+                                animate={{ x: 0 }}
+                                transition={transition}
+                            >
+                                {persona.imageUrl && (
+                                    <Image 
+                                        src={persona.imageUrl} 
+                                        alt={persona.name} 
+                                        layout="fill" 
+                                        className="object-cover"
+                                        priority 
+                                    />
+                                )}
+                            </motion.div>
+                            <ChatView persona={persona} />
+                        </div>
+                    )}
+                    {view === 'workspace' && (
+                        <div className="w-full h-full flex flex-col">
+                            <WorkspaceView persona={persona} />
+                            <motion.div 
+                                className="w-1/3 h-1/3 relative mx-auto"
+                                initial={{ y: 50 }}
+                                animate={{ y: 0 }}
+                                transition={transition}
+                            >
+                                {persona.imageUrl && (
+                                    <Image 
+                                        src={persona.imageUrl} 
+                                        alt={persona.name} 
+                                        layout="fill" 
+                                        className="object-cover"
+                                        priority 
+                                    />
+                                )}
+                            </motion.div>
+                        </div>
+                    )}
                 </motion.div>
             </AnimatePresence>
 
-            {/* --- Persona Anchor & Navigation --- */}
-            <motion.div
-                className="absolute w-1/2 h-full top-0 left-0 z-20 origin-center"
-                variants={personaVariants}
-                animate={view}
-                transition={transition}
-                style={{ originX: '50%', originY: '40%' }} // Adjust origin for better scaling
+            {/* --- Navigation --- */}
+            <motion.div 
+                className="absolute bottom-8 left-1/2 transform -translate-x-1/2 z-30"
+                initial={{opacity: 0}}
+                animate={{opacity: 1}}
+                transition={{delay: 0.3}}
             >
-                {persona.imageUrl && (
-                    <Image src={persona.imageUrl} alt={persona.name} layout="fill" className="object-cover" priority />
-                )}
-
-                {/* --- Contextual Navigation --- */}
-                <motion.div 
-                    className="absolute"
-                    initial={{opacity: 0}}
-                    animate={{opacity: 1}}
-                    transition={{delay: 0.3}}
-                    style={{
-                        bottom: view === 'workspace' ? 'auto' : '10%', // Position nav based on view
-                        top: view === 'workspace' ? '100%' : 'auto',
-                        left: '50%', 
-                        translateX: '-50%',
-                    }}
-                >
-                    <div className="flex items-center gap-2 p-1.5 bg-gray-200/80 backdrop-blur-lg rounded-full shadow-lg border border-gray-300">
-                        {view !== 'bio' && <button onClick={() => setView('bio')} className="px-5 py-2 rounded-full text-sm font-medium hover:bg-gray-50 transition-colors bg-white text-black">Bio</button>}
-                        {view !== 'chat' && <button onClick={() => setView('chat')} className="px-5 py-2 rounded-full text-sm font-medium hover:bg-gray-50 transition-colors bg-white text-black">Chat</button>}
-                        {view !== 'workspace' && <button onClick={() => setView('workspace')} className="px-5 py-2 rounded-full text-sm font-medium hover:bg-gray-50 transition-colors bg-white text-black">Workspace</button>}
-                    </div>
-                </motion.div>
+                <div className="flex items-center gap-2 p-1.5 bg-gray-200/80 backdrop-blur-lg rounded-full shadow-lg border border-gray-300">
+                    {view !== 'bio' && <button onClick={() => setView('bio')} className="px-5 py-2 rounded-full text-sm font-medium hover:bg-gray-50 transition-colors bg-white text-black">Bio</button>}
+                    {view !== 'chat' && <button onClick={() => setView('chat')} className="px-5 py-2 rounded-full text-sm font-medium hover:bg-gray-50 transition-colors bg-white text-black">Chat</button>}
+                    {view !== 'workspace' && <button onClick={() => setView('workspace')} className="px-5 py-2 rounded-full text-sm font-medium hover:bg-gray-50 transition-colors bg-white text-black">Workspace</button>}
+                </div>
             </motion.div>
         </div>
     );
@@ -126,7 +176,7 @@ function PersonaPageContent() {
 // --- View-Specific Components (Content Panes) ---
 
 const BioView: React.FC<{ persona: Persona }> = ({ persona }) => (
-    <div className="absolute left-0 w-1/2 h-full overflow-y-auto">
+    <div className="absolute right-0 w-1/2 h-full overflow-y-auto">
          <div className="max-w-xl mx-auto px-12 py-32">
             <Link href={`/swipe?refine=core&personaId=${persona.id}`} className="text-sm font-semibold text-gray-400 hover:text-black transition-colors">↳ Edit</Link>
             <h1 className="text-6xl font-bold mt-2 text-black">{persona.name}</h1>
