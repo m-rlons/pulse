@@ -154,7 +154,20 @@ function SwipePageContent() {
     if (personaGenerationPromise) {
       try {
         await personaGenerationPromise;
-        router.push('/persona');
+        
+        // THE FIX: Retrieve the newly created persona to get its ID for the redirect.
+        const personaJSON = localStorage.getItem('persona');
+        if (!personaJSON) {
+            throw new Error("Failed to retrieve generated persona from storage.");
+        }
+        const newPersona: Persona = JSON.parse(personaJSON);
+        
+        if (!newPersona.id) {
+            throw new Error("Generated persona is missing an ID.");
+        }
+
+        router.push(`/persona?id=${newPersona.id}`);
+
       } catch (err: any) {
         setError(err.message || 'Could not generate persona.');
         // Don't transition away, show error on the current screen
