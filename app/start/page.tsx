@@ -4,6 +4,7 @@ import React from 'react';
 import { useRouter } from 'next/navigation';
 import { Bento } from '../../lib/types';
 import { v4 as uuidv4 } from 'uuid';
+import { Dice1 } from 'lucide-react';
 
 const sampleBentos: (Omit<Bento, 'id' | 'timestamp'> & { title: string })[] = [
     {
@@ -51,6 +52,11 @@ export default function StartPage() {
         router.push('/swipe');
     };
 
+    const handleRandomBento = () => {
+        const randomIndex = Math.floor(Math.random() * sampleBentos.length);
+        handleSelectBento(sampleBentos[randomIndex]);
+    };
+
     return (
         <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-8">
             <div className="text-center">
@@ -60,6 +66,14 @@ export default function StartPage() {
                 </p>
             </div>
             <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl w-full">
+                <div
+                    onClick={handleRandomBento}
+                    className="bg-black text-white p-6 rounded-lg shadow-md hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer border flex flex-col items-center justify-center text-center"
+                >
+                    <Dice1 size={32} className="mb-4" />
+                    <h2 className="text-xl font-bold">Random Business</h2>
+                    <p className="mt-4 text-sm text-gray-300">Click to try a random business idea</p>
+                </div>
                 {sampleBentos.map((bento, index) => (
                     <div
                         key={index}

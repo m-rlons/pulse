@@ -2,7 +2,7 @@
 
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, TargetAndTransition } from 'framer-motion';
-import { ArrowLeft, ArrowRight, ArrowDown } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ArrowDown, Zap } from 'lucide-react';
 import { Statement, AssessmentResult } from '../lib/types';
 
 const gradients = [
@@ -24,6 +24,7 @@ export const SwipeInterface: React.FC<SwipeInterfaceProps> = ({ statements, onAs
   const [results, setResults] = useState<AssessmentResult[]>([]);
   const [isAnimating, setIsAnimating] = useState(false);
   const [exitDirection, setExitDirection] = useState<'left' | 'right' | 'down' | 'up' | null>(null);
+  const [isAutoSwiping, setIsAutoSwiping] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   
   const allAnswered = currentIndex >= statements.length;
@@ -53,6 +54,28 @@ export const SwipeInterface: React.FC<SwipeInterfaceProps> = ({ statements, onAs
     },
     [currentIndex, statements, allAnswered, isAnimating]
   );
+
+  const handleQuickTest = useCallback(() => {
+    if (isAutoSwiping || allAnswered) return;
+    setIsAutoSwiping(true);
+
+    const autoSwipeNext = (index: number) => {
+      if (index >= statements.length) {
+        setIsAutoSwiping(false);
+        return;
+      }
+
+      // Randomly choose between left (-1), down (0), or right (1)
+      const directions = ['left', 'down', 'right'] as const;
+      const randomDirection = directions[Math.floor(Math.random() * 3)];
+      
+      handleSwipe(randomDirection);
+      
+      setTimeout(() => autoSwipeNext(index + 1), 400); // Slightly longer than animation time
+    };
+
+    autoSwipeNext(currentIndex);
+  }, [currentIndex, statements.length, handleSwipe, isAutoSwiping, allAnswered]);
 
   const handlePrevious = useCallback(() => {
     if (currentIndex === 0 || isAnimating) return;
@@ -115,14 +138,24 @@ export const SwipeInterface: React.FC<SwipeInterfaceProps> = ({ statements, onAs
   return (
     <div className="w-full h-screen flex flex-col items-center justify-between p-8 bg-white">
         {/* Progress Bar */}
-        <div className="w-full max-w-2xl px-4">
-            <div className="relative h-3 bg-gray-100 rounded-full">
+        <div className="w-full max-w-2xl px-4 flex items-center justify-between">
+            <div className="relative h-3 bg-gray-100 rounded-full flex-1">
                 <motion.div 
                     className="absolute top-0 left-0 h-full bg-black rounded-full"
                     animate={{ width: `${progress}%` }}
                     transition={{ type: 'spring', stiffness: 100, damping: 20 }}
                 />
             </div>
+            {!allAnswered && (
+              <button
+                onClick={handleQuickTest}
+                disabled={isAutoSwiping}
+                className="ml-4 bg-black text-white px-4 py-2 rounded-md flex items-center gap-2 hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Zap size={16} />
+                Quick Test
+              </button>
+            )}
         </div>
 
       <div ref={containerRef} className="relative w-full flex justify-center items-center h-[450px]">
