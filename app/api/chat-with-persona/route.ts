@@ -76,7 +76,10 @@ export async function POST(req: NextRequest) {
     console.log('[chat-with-persona] Request:', { personaId: safePersonaId, modelName, generateImage, chatHistory });
     const model = genAI.getGenerativeModel({ 
         model: modelName,
-        systemInstruction: getSystemPrompt(persona, documentContent),
+        systemInstruction: {
+          role: 'system',
+          parts: [{ text: getSystemPrompt(persona, documentContent) }]
+        },
     });
     
     // Avoid mutating chatHistory
