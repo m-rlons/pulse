@@ -26,14 +26,18 @@ Your task is to provide a natural, in-character response to the user's message. 
 
 
 export async function POST(req: NextRequest) {
+  console.log('[chat-with-persona] API route hit', { method: req.method });
   try {
-    const { persona, chatHistory, generateImage } = (await req.json()) as {
+    const body = await req.text();
+    console.log('[chat-with-persona] Raw request body:', body);
+    const { persona, chatHistory, generateImage } = JSON.parse(body) as {
       persona: Persona;
       chatHistory: ChatMessage[];
       generateImage?: boolean;
     };
 
     if (!persona || !Array.isArray(chatHistory)) {
+      console.error('[chat-with-persona] Invalid request body', { persona, chatHistory });
       return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
     }
 
