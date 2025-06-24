@@ -13,13 +13,15 @@ if (!process.env.AUTH_RESEND_KEY) {
   throw new Error("Missing Resend API Key environment variable");
 }
 
+if (!process.env.EMAIL_FROM) {
+    throw new Error("Missing EMAIL_FROM environment variable");
+}
+
 const handler = NextAuth({
   adapter: PrismaAdapter(prisma),
   providers: [
     EmailProvider({
-      // IMPORTANT: This from address MUST be a verified domain on Resend.
-      // Using 'onboarding@resend.dev' is for testing only.
-      from: "onboarding@resend.dev",
+      from: process.env.EMAIL_FROM,
       sendVerificationRequest,
     }),
     GitHub({
