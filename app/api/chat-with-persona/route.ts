@@ -90,11 +90,23 @@ export async function POST(req: NextRequest) {
     
     // Avoid mutating chatHistory
     const latestUserMessage = chatHistory[chatHistory.length - 1];
-    const historyForModel = chatHistory.slice(0, -1);
+    let historyForModel = chatHistory.slice(0, -1); // Use let to allow modification
     if (!latestUserMessage || latestUserMessage.role !== 'user') {
         // This case should not happen in normal flow
         console.error('[chat-with-persona] No user message to respond to', { latestUserMessage, chatHistory });
         return NextResponse.json({ error: 'No user message to respond to' }, { status: 400 });
+    }
+    
+    // The history for the model must not start with a 'model' message.
+    // Find the index of the first 'user' message.
+    const firstUserIndex = historyForModel.findIndex(m => m.role === 'user');
+
+    if (firstUserIndex > 0) {
+      // If there are leading 'model' messages, slice the history to start from the first 'user' message.
+      historyForModel = historyForModel.slice(firstUserIndex);
+    } else if (firstUserIndex === -1 && historyForModel.length > 0) {
+      // If the entire history consists of 'model' messages, clear it.
+      historyForModel = [];
     }
     
     const history = historyForModel.map(m => ({
