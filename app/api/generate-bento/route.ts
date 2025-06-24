@@ -1,31 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { v4 as uuidv4 } from 'uuid';
-import { Bento } from '../../../lib/types';
+import { Bento, BentoPanel } from '../../../lib/types';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-const systemPrompt = `You are a business analysis expert. Based on the user's business description, create a comprehensive business "bento box" with the following components:
+const systemPrompt = `You are a business analysis expert. Based on the user's business description, create a comprehensive business "bento box".
 
-1. Business Model: A one-sentence description of how the business operates
-2. Customer Challenge: The main problem customers face that this business solves
-3. Product/Service: A clear description of what the business offers
-4. Positioning: How the business differentiates itself in the market
-5. Why We Exist: The company's mission or purpose
-6. Competitors: List 3-5 direct competitors
+Your response must be a valid JSON object. This object will contain a "panels" array. Each object in the "panels" array represents a panel in a dynamic grid and must have the following properties:
+- title: string (The title of the panel)
+- content: string (The content of the panel. For "Direct Competitors", this should be a comma-separated list of names.)
+- colSpan: number (The width of the panel in grid units)
+- rowSpan: number (The height of the panel in grid units)
 
-Return ONLY a valid JSON object with this structure:
-{
-  "businessModel": "string",
-  "customerChallenge": "string",
-  "productService": "string",
-  "positioning": "string",
-  "whyWeExist": "string",
-  "competitors": [
-    { "name": "Competitor 1", "domain": "competitor1.com" },
-    { "name": "Competitor 2", "domain": "competitor2.com" }
-  ]
-}`;
+Create the following panels with the specified content and layout:
+1.  **Business Model**: A one-sentence description of how the business operates. (colSpan: 2, rowSpan: 1)
+2.  **Customer Challenge**: The main problem this business solves. (colSpan: 1, rowSpan: 1)
+3.  **Product/Service**: What the business offers. (colSpan: 1, rowSpan: 1)
+4.  **Positioning**: How the business differentiates itself. (colSpan: 2, rowSpan: 1)
+5.  **Direct Competitors**: List 3-5 direct competitors as a comma-separated string. (colSpan: 3, rowSpan: 1)
+6.  **Why We Exist**: The company's mission or purpose. (colSpan: 3, rowSpan: 2)
+
+Return ONLY the valid JSON object. Do not include markdown formatting or any other text.`;
 
 export async function POST(req: NextRequest) {
   try {
@@ -34,7 +30,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid input: description is required' }, { status: 400 });
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash-latest' });
 
     const userMessage = `Here is the user's business description: ${description}`;
 
@@ -56,12 +52,7 @@ export async function POST(req: NextRequest) {
     const bento: Bento = {
       id: uuidv4(),
       businessDescription: description,
-      businessModel: parsedResponse.businessModel,
-      customerChallenge: parsedResponse.customerChallenge,
-      productService: parsedResponse.productService,
-      positioning: parsedResponse.positioning,
-      whyWeExist: parsedResponse.whyWeExist,
-      competitors: parsedResponse.competitors,
+      panels: parsedResponse.panels, // The AI now returns the panels array directly
       timestamp: Date.now(),
     };
 

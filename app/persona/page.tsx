@@ -32,13 +32,12 @@ function UnifiedPersonasArea() {
       setPersonas(parsed);
       if (parsed.length > 0) {
         setSelectedPersona(parsed[0]);
-        // Also load the bento data for the first persona if it exists
-        const bentoStore = localStorage.getItem('bentoData');
+        // Also load the bento data if it exists
+        const bentoStore = localStorage.getItem('bento');
         if (bentoStore) {
-          const allBentos = JSON.parse(bentoStore);
-          if (allBentos[parsed[0].id]) {
-            setBentoData(allBentos[parsed[0].id]);
-          }
+          const bentoForPersona = JSON.parse(bentoStore);
+          // This assumes one bento for now, we can expand later
+          setBentoData(bentoForPersona);
         }
       }
     }
@@ -126,11 +125,11 @@ function UnifiedPersonasArea() {
   // Handler for selecting a persona
   const handlePersonaSelect = (persona: Persona) => {
     setSelectedPersona(persona);
-    // Load bento data for the selected persona
-    const bentoStore = localStorage.getItem('bentoData');
-    if (bentoStore && persona.id) {
-      const allBentos = JSON.parse(bentoStore);
-      setBentoData(allBentos[persona.id] || null);
+    // For now, we assume the single generated bento belongs to all personas.
+    // This can be changed later to support multiple bentos.
+    const bentoStore = localStorage.getItem('bento');
+    if (bentoStore) {
+      setBentoData(JSON.parse(bentoStore));
     } else {
       setBentoData(null);
     }
@@ -224,7 +223,7 @@ function UnifiedPersonasArea() {
             {/* Top: Bento View */}
             <div className="h-screen w-full flex flex-col justify-center items-center p-8 bg-gray-50 overflow-y-auto">
               {bentoData ? (
-                <BentoBox bento={bentoData} onApprove={() => {}} onRetry={() => {}} isLoading={false} />
+                <BentoBox bento={bentoData} />
               ) : (
                 <div className="text-center text-gray-500">
                   <Building size={48} className="mx-auto mb-4" />

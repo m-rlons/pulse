@@ -76,14 +76,27 @@ export default function BentoPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white p-4">
+    <div className="min-h-screen bg-white p-4 flex flex-col items-center justify-center">
       {bento && (
-        <BentoBox 
-          bento={bento} 
-          onApprove={handleApprove}
-          onRetry={handleRetry}
-          isLoading={isLoading}
-        />
+        <>
+          <BentoBox bento={bento} />
+          <div className="flex justify-between items-center mt-8 md:mt-16 w-full max-w-5xl px-8">
+            <button
+              onClick={handleRetry}
+              className="bg-gray-200 text-gray-800 px-8 py-4 rounded-full font-medium hover:bg-gray-300 transition-all text-lg"
+            >
+              Regenerate
+            </button>
+            
+            <button
+              onClick={handleApprove}
+              className="bg-black text-white px-8 py-4 rounded-full font-medium hover:bg-gray-800 transition-all"
+            >
+              Looks good, next
+              <span className="ml-2">→</span>
+            </button>
+          </div>
+        </>
       )}
     </div>
   );
