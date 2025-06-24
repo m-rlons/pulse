@@ -24,13 +24,25 @@ function SwipePageContent() {
   const [showIntro, setShowIntro] = useState(!refinementDimension);
 
   useEffect(() => {
-    const savedBento = localStorage.getItem('bento');
+    let savedBento: Bento | null = null;
+    const bentoStoreJSON = localStorage.getItem('bentos');
+    
+    if (bentoStoreJSON) {
+      const allBentos = JSON.parse(bentoStoreJSON);
+      // The swipe page operates on the first bento created. Find it.
+      // It might be under a temp ID or a real persona ID.
+      const personaBentos = Object.values(allBentos)[0] as Record<string, Bento> | undefined;
+      if (personaBentos && personaBentos['Business Model']) {
+        savedBento = personaBentos['Business Model'];
+      }
+    }
+
     if (!savedBento) {
       setError('Bento box data not found. Please start over.');
       setIsFetchingStatements(false);
       return;
     }
-    const parsedBento = JSON.parse(savedBento);
+    const parsedBento = savedBento; // It's already parsed
     setBento(parsedBento);
 
     const fetchStatements = async () => {
