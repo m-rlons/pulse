@@ -5,6 +5,11 @@ import { v4 as uuidv4 } from 'uuid';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
+const getPanelContent = (bento: Bento, title: string): string => {
+  const panel = bento.panels.find(p => p.title === title);
+  return panel ? panel.content : 'Not provided';
+};
+
 const formatBentoForPrompt = (bento: Bento) => {
   const dimensions = [
     { name: "spend", definition: "comfort level in paying for resources", count: 4 },
@@ -31,9 +36,9 @@ You are a helpful assistant creating a simple quiz to understand a person's opin
 Your goal is to create 8-10 very simple, direct statements.
 
 Use the following business context for inspiration:
-- Business Model: ${bento.businessModel}
-- Product/Service: ${bento.productService}
-- Customer Challenge: ${bento.customerChallenge}
+- Business Model: ${getPanelContent(bento, 'Business Model')}
+- Product/Service: ${getPanelContent(bento, 'Product/Service')}
+- Customer Challenge: ${getPanelContent(bento, 'Customer Challenge')}
 
 INSTRUCTIONS
 - The statements should be short and easy to understand. Imagine you're writing for a 10th grader.
