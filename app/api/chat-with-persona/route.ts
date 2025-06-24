@@ -21,12 +21,18 @@ ${documentContent ?
 ${documentContent}
 ---` : ''}
 
-Your task is to provide a natural, in-character response to the user's message. Do not add any extra formatting, labels, or JSON. Just the response text.
+Your task is to provide a natural, in-character response to the user's message.
+Return ONLY a valid JSON object with this structure:
+{
+  "response": "string (your chat response here)"
+}
+Do not include markdown formatting, backticks, or any explanatory text.
 `;
 
 
 export async function POST(req: NextRequest) {
   console.log('[chat-with-persona] API route hit', { method: req.method });
+  let text: string | undefined;
   try {
     const body = await req.text();
     console.log('[chat-with-persona] Raw request body:', body);
@@ -72,8 +78,8 @@ export async function POST(req: NextRequest) {
     
     const modelName = generateImage
       ? 'gemini-2.0-flash-preview-image-generation'
-      : 'gemini-2.5-flash';
-    console.log('[chat-with-persona] Request:', { personaId: safePersonaId, modelName, generateImage, chatHistory });
+      : 'gemini-1.5-flash-latest'; // Using 1.5-flash as per other endpoints for consistency
+    console.log('[chat-with-persona] Request:', { personaId: safePersonaId, modelName, generateImage, chatHistoryLength: chatHistory.length });
     const model = genAI.getGenerativeModel({ 
         model: modelName,
         systemInstruction: {
@@ -96,34 +102,34 @@ export async function POST(req: NextRequest) {
         parts: [{ text: m.content }]
     }));
     
-    try {
-      const chat = model.startChat({ history });
-      const result = await chat.sendMessageStream(latestUserMessage.content);
-      const stream = new ReadableStream({
-        async start(controller) {
-          for await (const chunk of result.stream) {
-            const chunkText = chunk.text();
-            controller.enqueue(new TextEncoder().encode(chunkText));
-          }
-          controller.close();
-        }
-      });
-      return new Response(stream, {
-          headers: {
-              'Content-Type': 'text/plain; charset=utf-8',
-          }
-      });
-    } catch (error) {
-      console.error('[chat-with-persona] Model error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      return NextResponse.json(
-        { error: 'Failed to get chat response', details: errorMessage },
-        { status: 500 }
-      );
-    }
+    const chat = model.startChat({ history });
+    const result = await chat.sendMessage(latestUserMessage.content);
+    const response = await result.response;
+    console.log('[chat-with-persona] Received response from Gemini.');
+    
+    text = response.text();
+    console.log('[chat-with-persona] Raw response text:', text);
+
+    const cleanedText = text
+      .replace(/```json\n?/g, '')
+      .replace(/```\n?/g, '')
+      .trim();
+    console.log('[chat-with-persona] Cleaned text:', cleanedText);
+    
+    const parsedResponse = JSON.parse(cleanedText);
+    
+    return NextResponse.json(parsedResponse);
 
   } catch (error) {
     console.error('[chat-with-persona] Error:', error);
+    if (error instanceof SyntaxError) {
+      console.error('[chat-with-persona] JSON Parsing Error:', error.message);
+      // Fallback to returning the raw text if JSON parsing fails
+      return NextResponse.json(
+        { error: 'Failed to parse JSON response from model', details: text || "No response text available." },
+        { status: 500 }
+      );
+    }
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
       { error: 'Failed to get chat response', details: errorMessage },
