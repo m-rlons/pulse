@@ -22,11 +22,10 @@ ${documentContent}
 ---` : ''}
 
 Your task is to provide a natural, in-character response to the user's message.
-Return ONLY a valid JSON object with this structure:
+You must respond with a valid JSON object in this exact format:
 {
-  "response": "string (your chat response here)"
+  "response": "Your message here - keep it conversational and brief (1-3 sentences unless asked for more detail). Respond like you're having a real conversation, not giving a presentation."
 }
-Do not include markdown formatting, backticks, or any explanatory text.
 `;
 
 
@@ -128,15 +127,24 @@ export async function POST(req: NextRequest) {
       .trim();
     console.log('[chat-with-persona] Cleaned text:', cleanedText);
     
-    const parsedResponse = JSON.parse(cleanedText);
+    let parsedResponse;
+    try {
+      // Happy path: The model returned valid JSON.
+      parsedResponse = JSON.parse(cleanedText);
+    } catch (e) {
+      // The model likely failed to return valid JSON.
+      // We'll optimistically assume the raw text is the intended response and wrap it.
+      console.warn('[chat-with-persona] Failed to parse JSON, wrapping raw text. Raw text was:', cleanedText);
+      parsedResponse = { response: cleanedText };
+    }
     
     return NextResponse.json(parsedResponse);
 
   } catch (error) {
     console.error('[chat-with-persona] Error:', error);
     if (error instanceof SyntaxError) {
-      console.error('[chat-with-persona] JSON Parsing Error:', error.message);
-      // Fallback to returning the raw text if JSON parsing fails
+      console.error('[chat-with-persona] JSON Parsing Error (should not be hit often):', error.message);
+      // This path is now less likely to be taken.
       return NextResponse.json(
         { error: 'Failed to parse JSON response from model', details: text || "No response text available." },
         { status: 500 }
