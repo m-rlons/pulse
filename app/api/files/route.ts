@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { readdir, stat } from 'fs/promises';
 import { join } from 'path';
 
+export const dynamic = 'force-dynamic';
+
 const UPLOADS_ROOT_DIR = join(process.cwd(), 'uploads');
 
 type FileData = {
