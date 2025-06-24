@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
 
     const bento: Bento = {
       id: uuidv4(),
+      type: 'business-model',
       businessDescription: description,
       panels: parsedResponse.panels, // The AI now returns the panels array directly
       timestamp: Date.now(),
