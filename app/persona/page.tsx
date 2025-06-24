@@ -4,14 +4,15 @@ import React, { useState, useEffect, Suspense, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Persona } from '../../lib/types';
-import { Loader, ArrowLeft, Plus, Send, UploadCloud } from 'lucide-react';
+import { Persona, Bento } from '../../lib/types';
+import { Loader, ArrowLeft, Plus, Send, UploadCloud, Building } from 'lucide-react';
+import { BentoBox } from '../../components/BentoBox';
 
 function UnifiedPersonasArea() {
   const [personas, setPersonas] = useState<Persona[]>([]);
   const [selectedPersona, setSelectedPersona] = useState<Persona | null>(null);
   const [staffOpen, setStaffOpen] = useState(false);
-  const [view, setView] = useState<'bio' | 'chat' | 'workspace'>('bio');
+  const [view, setView] = useState<'bio' | 'bento' | 'chat' | 'workspace'>('bio');
   const [isLoading, setIsLoading] = useState(true);
   const [staffExpanded, setStaffExpanded] = useState(false);
   const [chatInput, setChatInput] = useState('');
@@ -22,6 +23,7 @@ function UnifiedPersonasArea() {
   ]);
   const chatEndRef = useRef(null);
   const [showOptions, setShowOptions] = useState(false);
+  const [bentoData, setBentoData] = useState<Bento | null>(null);
 
   useEffect(() => {
     const personasData = localStorage.getItem('personas');
@@ -30,6 +32,14 @@ function UnifiedPersonasArea() {
       setPersonas(parsed);
       if (parsed.length > 0) {
         setSelectedPersona(parsed[0]);
+        // Also load the bento data for the first persona if it exists
+        const bentoStore = localStorage.getItem('bentoData');
+        if (bentoStore) {
+          const allBentos = JSON.parse(bentoStore);
+          if (allBentos[parsed[0].id]) {
+            setBentoData(allBentos[parsed[0].id]);
+          }
+        }
       }
     }
     setIsLoading(false);
@@ -116,6 +126,14 @@ function UnifiedPersonasArea() {
   // Handler for selecting a persona
   const handlePersonaSelect = (persona: Persona) => {
     setSelectedPersona(persona);
+    // Load bento data for the selected persona
+    const bentoStore = localStorage.getItem('bentoData');
+    if (bentoStore && persona.id) {
+      const allBentos = JSON.parse(bentoStore);
+      setBentoData(allBentos[persona.id] || null);
+    } else {
+      setBentoData(null);
+    }
     setStaffExpanded(false);
     setTimeout(() => setStaffOpen(false), 600); // allow width contract first, then scroll down
     setView('bio');
@@ -123,7 +141,8 @@ function UnifiedPersonasArea() {
 
   // Animation transitions
   const transition = { duration: 1.2, ease: [0.76, 0, 0.24, 1] };
-  const canvasX = view === 'bio' ? '0vw' : '-66.66vw';
+  const canvasX = view === 'chat' || view === 'workspace' ? '-66.66vw' : '0vw';
+  const bioY = view === 'bento' ? '0vh' : '-100vh';
   const interactiveY = view === 'workspace' ? '0vh' : '-100vh';
 
   if (isLoading) {
@@ -191,24 +210,45 @@ function UnifiedPersonasArea() {
         animate={{ x: canvasX }}
         transition={transition}
       >
-        {/* Column 1: Bio (66.66vw) - always present but out of view when staffExpanded */}
+        {/* Column 1: Bio / Bento (66.66vw) */}
         <motion.div
-          className="h-screen flex flex-col justify-center items-end p-16"
+          className="relative h-screen overflow-hidden"
           style={{ width: '66.66vw', display: staffExpanded ? 'none' : 'block' }}
-          transition={transition}
         >
-          {selectedPersona && (
-            <div className="w-full max-w-2xl">
-              <h1 className="text-6xl font-bold mt-2 text-black">{selectedPersona.name}</h1>
-              <p className="text-xl text-gray-500 mt-2">{selectedPersona.age} years old</p>
-              <p className="text-xl text-gray-500">{selectedPersona.role} - {selectedPersona.experience}</p>
-              <div className="mt-12 space-y-8 text-base text-gray-800 border-t border-gray-200 pt-8">
-                <div><h3 className="font-bold mb-2 text-black tracking-wider uppercase text-sm">Bio</h3><p className="whitespace-pre-wrap leading-relaxed">{selectedPersona.bio}</p></div>
-                <div><h3 className="font-bold mb-2 text-black tracking-wider uppercase text-sm">Interests</h3><p className="leading-relaxed">{selectedPersona.interests}</p></div>
-                <div><h3 className="font-bold mb-2 text-black tracking-wider uppercase text-sm">Disinterests</h3><p className="leading-relaxed">{selectedPersona.disinterests}</p></div>
-              </div>
+          <motion.div
+            className="absolute inset-0 w-full"
+            style={{ height: '200vh' }}
+            animate={{ y: bioY }}
+            transition={transition}
+          >
+            {/* Top: Bento View */}
+            <div className="h-screen w-full flex flex-col justify-center items-center p-8 bg-gray-50 overflow-y-auto">
+              {bentoData ? (
+                <BentoBox bento={bentoData} onApprove={() => {}} onRetry={() => {}} isLoading={false} />
+              ) : (
+                <div className="text-center text-gray-500">
+                  <Building size={48} className="mx-auto mb-4" />
+                  <h2 className="text-2xl font-bold">No Bento Box Yet</h2>
+                  <p>Generate a Bento Box from the main screen to see it here.</p>
+                </div>
+              )}
             </div>
-          )}
+            {/* Bottom: Bio View */}
+            <div className="h-screen w-full flex flex-col justify-center items-end p-16 bg-white">
+              {selectedPersona && (
+                <div className="w-full max-w-2xl">
+                  <h1 className="text-6xl font-bold mt-2 text-black">{selectedPersona.name}</h1>
+                  <p className="text-xl text-gray-500 mt-2">{selectedPersona.age} years old</p>
+                  <p className="text-xl text-gray-500">{selectedPersona.role} - {selectedPersona.experience}</p>
+                  <div className="mt-12 space-y-8 text-base text-gray-800 border-t border-gray-200 pt-8">
+                    <div><h3 className="font-bold mb-2 text-black tracking-wider uppercase text-sm">Bio</h3><p className="whitespace-pre-wrap leading-relaxed">{selectedPersona.bio}</p></div>
+                    <div><h3 className="font-bold mb-2 text-black tracking-wider uppercase text-sm">Interests</h3><p className="leading-relaxed">{selectedPersona.interests}</p></div>
+                    <div><h3 className="font-bold mb-2 text-black tracking-wider uppercase text-sm">Disinterests</h3><p className="leading-relaxed">{selectedPersona.disinterests}</p></div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </motion.div>
         </motion.div>
 
         {/* Column 2: Persona/Staff Directory (33.34vw or 100vw) */}
@@ -242,6 +282,12 @@ function UnifiedPersonasArea() {
                       className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${view === 'bio' ? 'bg-black text-white' : 'bg-white text-black hover:bg-gray-50'}`}
                     >
                       Bio
+                    </button>
+                    <button
+                      onClick={() => setView('bento')}
+                      className={`px-5 py-2 rounded-full text-sm font-medium transition-colors ${view === 'bento' ? 'bg-black text-white' : 'bg-white text-black hover:bg-gray-50'}`}
+                    >
+                      Bento
                     </button>
                     <button
                       onClick={() => setView('chat')}
