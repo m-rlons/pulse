@@ -9,7 +9,7 @@ if (!process.env.AUTH_GITHUB_ID || !process.env.AUTH_GITHUB_SECRET) {
 
 const prisma = new PrismaClient()
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+const handler = NextAuth({
   adapter: PrismaAdapter(prisma),
   providers: [
     GitHub({
@@ -17,4 +17,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         clientSecret: process.env.AUTH_GITHUB_SECRET,
     }),
   ],
-}) 
+})
+
+export { handler as GET, handler as POST } 
