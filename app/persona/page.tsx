@@ -5,8 +5,19 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Persona, Bento } from '../../lib/types';
-import { Loader, ArrowLeft, Plus, Send, UploadCloud, Building } from 'lucide-react';
+import { Loader, ArrowLeft, Plus, Send, UploadCloud, Building, ChevronDown, Wand2 } from 'lucide-react';
 import { BentoBox } from '../../components/BentoBox';
+
+const BENTO_CONFIG: Record<string, { name: string; endpoint: string; }[]> = {
+  'default': [
+    { name: 'Business Model', endpoint: '/api/generate-bento' },
+  ],
+  'Marketing Expert': [
+    { name: 'Business Model', endpoint: '/api/generate-bento' },
+    { name: 'SWOT Analysis', endpoint: '/api/generate-swot' },
+  ],
+  // Add other roles here
+};
 
 function UnifiedPersonasArea() {
   const [personas, setPersonas] = useState<Persona[]>([]);
@@ -23,7 +34,9 @@ function UnifiedPersonasArea() {
   ]);
   const chatEndRef = useRef(null);
   const [showOptions, setShowOptions] = useState(false);
-  const [bentoData, setBentoData] = useState<Bento | null>(null);
+  const [bentos, setBentos] = useState<Record<string, Bento>>({});
+  const [currentBentoType, setCurrentBentoType] = useState<string>('Business Model');
+  const [isGeneratingBento, setIsGeneratingBento] = useState(false);
 
   useEffect(() => {
     const personasData = localStorage.getItem('personas');
@@ -31,13 +44,22 @@ function UnifiedPersonasArea() {
       const parsed = JSON.parse(personasData);
       setPersonas(parsed);
       if (parsed.length > 0) {
-        setSelectedPersona(parsed[0]);
-        // Also load the bento data if it exists
-        const bentoStore = localStorage.getItem('bento');
-        if (bentoStore) {
-          const bentoForPersona = JSON.parse(bentoStore);
-          // This assumes one bento for now, we can expand later
-          setBentoData(bentoForPersona);
+        const firstPersona = parsed[0];
+        setSelectedPersona(firstPersona);
+        // Load all bentos from storage
+        const bentoStoreJSON = localStorage.getItem('bentos');
+        if (bentoStoreJSON) {
+          const allBentos = JSON.parse(bentoStoreJSON);
+          // Check for a bento saved under a temporary ID from the initial creation step
+          if (allBentos['temp-persona-id']) {
+            allBentos[firstPersona.id] = allBentos['temp-persona-id'];
+            delete allBentos['temp-persona-id'];
+            localStorage.setItem('bentos', JSON.stringify(allBentos));
+          }
+
+          if (allBentos[firstPersona.id]) {
+            setBentos(allBentos[firstPersona.id]);
+          }
         }
       }
     }
@@ -125,17 +147,48 @@ function UnifiedPersonasArea() {
   // Handler for selecting a persona
   const handlePersonaSelect = (persona: Persona) => {
     setSelectedPersona(persona);
-    // For now, we assume the single generated bento belongs to all personas.
-    // This can be changed later to support multiple bentos.
-    const bentoStore = localStorage.getItem('bento');
-    if (bentoStore) {
-      setBentoData(JSON.parse(bentoStore));
+    const bentoStore = localStorage.getItem('bentos');
+    if (bentoStore && persona.id) {
+      const allBentos = JSON.parse(bentoStore);
+      setBentos(allBentos[persona.id] || {});
     } else {
-      setBentoData(null);
+      setBentos({});
     }
+    setCurrentBentoType('Business Model'); // Reset to default view
     setStaffExpanded(false);
-    setTimeout(() => setStaffOpen(false), 600); // allow width contract first, then scroll down
+    setTimeout(() => setStaffOpen(false), 600);
     setView('bio');
+  };
+
+  const handleGenerateNewBento = async (type: string) => {
+    if (!selectedPersona || isGeneratingBento) return;
+
+    const bentoConfig = (BENTO_CONFIG[selectedPersona.role] || BENTO_CONFIG['default']).find(b => b.name === type);
+    if (!bentoConfig) return;
+
+    setIsGeneratingBento(true);
+    try {
+      const res = await fetch(bentoConfig.endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description: selectedPersona.bio }), // Using bio as description for now
+      });
+      const newBento: Bento = await res.json();
+      
+      const newBentosForPersona = { ...bentos, [type]: newBento };
+      setBentos(newBentosForPersona);
+
+      // Update localStorage
+      const bentoStore = localStorage.getItem('bentos') || '{}';
+      const allBentos = JSON.parse(bentoStore);
+      allBentos[selectedPersona.id] = newBentosForPersona;
+      localStorage.setItem('bentos', JSON.stringify(allBentos));
+
+    } catch (e) {
+      console.error("Failed to generate new bento", e);
+    } finally {
+      setIsGeneratingBento(false);
+    }
   };
 
   // Animation transitions
@@ -221,16 +274,31 @@ function UnifiedPersonasArea() {
             transition={transition}
           >
             {/* Top: Bento View */}
-            <div className="h-screen w-full flex flex-col justify-center items-center p-8 bg-gray-50 overflow-y-auto">
-              {bentoData ? (
-                <BentoBox bento={bentoData} />
-              ) : (
-                <div className="text-center text-gray-500">
-                  <Building size={48} className="mx-auto mb-4" />
-                  <h2 className="text-2xl font-bold">No Bento Box Yet</h2>
-                  <p>Generate a Bento Box from the main screen to see it here.</p>
+            <div className="h-screen w-full flex flex-col justify-center items-start p-8 bg-gray-50 overflow-y-auto">
+              <div className="w-full max-w-5xl mx-auto">
+                <div className="flex items-center justify-between mb-8">
+                  <h2 className="text-2xl font-bold">{currentBentoType}</h2>
+                  {/* Add dropdown here later */}
                 </div>
-              )}
+
+                {bentos[currentBentoType] ? (
+                  <BentoBox bento={bentos[currentBentoType]} />
+                ) : (
+                  <div className="text-center text-gray-500 p-16 border-2 border-dashed rounded-2xl">
+                    <Building size={48} className="mx-auto mb-4" />
+                    <h2 className="text-2xl font-bold">Generate {currentBentoType}</h2>
+                    <p className="mb-6">This analysis hasn't been generated yet.</p>
+                    <button
+                      onClick={() => handleGenerateNewBento(currentBentoType)}
+                      disabled={isGeneratingBento}
+                      className="bg-black text-white px-6 py-3 rounded-full font-medium hover:bg-gray-800 transition-all inline-flex items-center gap-2 disabled:opacity-50"
+                    >
+                      {isGeneratingBento ? <Loader className="animate-spin" /> : <Wand2 />}
+                      Generate Now
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
             {/* Bottom: Bio View */}
             <div className="h-screen w-full flex flex-col justify-center items-end p-16 bg-white">

@@ -33,7 +33,13 @@ export default function BentoPage() {
 
       const data: Bento = await res.json();
       setBento(data);
-      localStorage.setItem('bento', JSON.stringify(data));
+      // Save this bento under the new multi-bento structure.
+      // We don't have a persona ID here, so we'll use a temporary one.
+      // The persona page will associate it with the first persona created.
+      // A better approach might be to create the persona first, but this works for now.
+      const tempId = 'temp-persona-id';
+      const bentoStore = { [tempId]: { 'Business Model': data } };
+      localStorage.setItem('bentos', JSON.stringify(bentoStore));
     } catch (err: any) {
       setError(err.message || 'An unknown error occurred.');
       // Optionally, redirect back to home if something fundamental fails

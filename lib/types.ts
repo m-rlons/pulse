@@ -19,6 +19,7 @@ export interface BentoPanel {
 
 export interface Bento {
   id: string;
+  type: string; // e.g., 'business-model', 'swot'
   businessDescription: string;
   panels: BentoPanel[];
   timestamp: number;

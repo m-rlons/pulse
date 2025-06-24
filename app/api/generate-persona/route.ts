@@ -5,16 +5,21 @@ import { v4 as uuidv4 } from 'uuid';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
+const getPanelContent = (bento: Bento, title: string): string => {
+  const panel = bento.panels.find(p => p.title === title);
+  return panel ? panel.content : 'Not provided';
+};
+
 const getSystemPrompt = (bento: Bento, results: AssessmentResult[]): string => `
 You are a world-class marketing strategist and storyteller. Based on the provided business context and the business owner's assessment of their customers (scores: -1=disagree, 0=neutral, 1=agree), create a detailed, realistic customer persona. The persona should feel like a real person that is a potential customer for the described business.
 
 BUSINESS CONTEXT
-- Business Model: ${bento.businessModel}
-- Customer Challenge: ${bento.customerChallenge}
-- Product/Service: ${bento.productService}
-- Positioning: ${bento.positioning}
-- Why We Exist: ${bento.whyWeExist}
-- Competitors: ${bento.competitors.map(c => c.name).join(', ')}
+- Business Model: ${getPanelContent(bento, 'Business Model')}
+- Customer Challenge: ${getPanelContent(bento, 'Customer Challenge')}
+- Product/Service: ${getPanelContent(bento, 'Product/Service')}
+- Positioning: ${getPanelContent(bento, 'Positioning')}
+- Why We Exist: ${getPanelContent(bento, 'Why We Exist')}
+- Competitors: ${getPanelContent(bento, 'Direct Competitors')}
 
 ASSESSMENT RESULTS
 ${results.map(r => `- ${r.dimension}: ${r.score === 1 ? 'agree' : r.score === 0 ? 'neutral' : 'disagree'}`).join('\n')}
