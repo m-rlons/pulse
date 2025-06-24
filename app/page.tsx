@@ -1,8 +1,13 @@
-'use client';
+import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
+import OnboardingFlow from "@/components/onboarding-flow";
 
-import React from 'react';
-import OnboardingFlow from '../components/onboarding-flow';
+export default async function Home() {
+  const session = await getServerSession();
 
-export default function Home() {
+  if (!session) {
+    redirect("/api/auth/signin");
+  }
+
   return <OnboardingFlow />;
 } 
