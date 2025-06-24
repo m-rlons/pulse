@@ -6,8 +6,28 @@ import { v4 as uuidv4 } from 'uuid';
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 const getPanelContent = (bento: Bento, title: string): string => {
-  const panel = bento.panels.find(p => p.title === title);
-  return panel ? panel.content : 'Not provided';
+  const panel = bento.panels.find(p => {
+    if ('title' in p.data && p.data.title === title) {
+      return true;
+    }
+    return false;
+  });
+
+  if (!panel) {
+    return 'Not provided';
+  }
+
+  // Handle different panel types to extract a string representation
+  switch (panel.data.type) {
+    case 'text':
+      return panel.data.content;
+    case 'competitors':
+      return panel.data.competitors.map(c => c.name).join(', ');
+    case 'feature-large-text':
+        return panel.data.value;
+    default:
+      return 'Not provided';
+  }
 };
 
 const getSystemPrompt = (bento: Bento, results: AssessmentResult[]): string => `
