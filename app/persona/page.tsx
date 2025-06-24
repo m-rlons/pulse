@@ -75,22 +75,26 @@ function UnifiedPersonasArea() {
     setChatInput('');
     setShowOptions(false);
     try {
+      const { imageUrl, ...personaDataForAPI } = selectedPersona;
       const res = await fetch('/api/chat-with-persona', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          persona: selectedPersona,
+          persona: personaDataForAPI,
           chatHistory: [...chatMessages, userMessage],
           generateImage: opts.generateImage,
         }),
       });
       if (res.ok) {
-        const reply = await res.text();
-        setChatMessages(prev => [...prev, { role: 'persona', content: reply }]);
+        const data = await res.json();
+        setChatMessages(prev => [...prev, { role: 'persona', content: data.response }]);
       } else {
-        setChatMessages(prev => [...prev, { role: 'persona', content: 'Sorry, something went wrong.' }]);
+        const errorData = await res.json().catch(() => ({ details: 'Could not parse error response.' }));
+        console.error("Chat API Error:", errorData);
+        setChatMessages(prev => [...prev, { role: 'persona', content: `Sorry, something went wrong. ${errorData.details || ''}` }]);
       }
-    } catch {
+    } catch (e){
+      console.error("Chat Fetch Error:", e);
       setChatMessages(prev => [...prev, { role: 'persona', content: 'Sorry, something went wrong.' }]);
     }
   };
