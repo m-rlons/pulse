@@ -1,4 +1,4 @@
-import NextAuth from "next-auth"
+import NextAuth, { type NextAuthOptions } from "next-auth"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import prisma from "@/lib/prisma"
 import GitHub from "next-auth/providers/github"
@@ -17,7 +17,7 @@ if (!process.env.EMAIL_FROM) {
     throw new Error("Missing EMAIL_FROM environment variable");
 }
 
-const handler = NextAuth({
+export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
     EmailProvider({
@@ -29,6 +29,8 @@ const handler = NextAuth({
         clientSecret: process.env.AUTH_GITHUB_SECRET,
     }),
   ],
-})
+}
+
+const handler = NextAuth(authOptions)
 
 export { handler as GET, handler as POST } 
